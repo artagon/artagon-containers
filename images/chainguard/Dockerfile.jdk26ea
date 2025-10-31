@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+ARG BASE_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST} AS builder
+
+ARG FLAVOR=jdk26ea
+ARG LIBC=musl
+ARG TYPE=chainguard
+ARG TARGETARCH
+
+RUN apk add --no-cache curl coreutils bash python3
+
+COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
+COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
+RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh
+
+RUN set -eux; \
+    eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
+    curl -fsSL "${JDK_URL}" -o /tmp/jdk.tar.gz; \
+    verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
+    mkdir -p /opt/jdk; \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
+    rm -f /tmp/jdk.tar.gz
+
+FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST}
+
+ARG FLAVOR=jdk26ea
+ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=builder /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
+
+RUN adduser -D -u 65532 runner 2>/dev/null || true \
+ && ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default
+
+WORKDIR /workspace
+USER 65532:65532
+
+LABEL org.opencontainers.image.title="artagon-chainguard-${FLAVOR}" \
+      org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
+      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
+      org.opencontainers.image.vendor="Artagon" \
+      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}"
+
+ENTRYPOINT ["java"]
+CMD ["--version"]

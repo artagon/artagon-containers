@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1.7
+ARG BUILDER_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+FROM cgr.dev/chainguard/wolfi-base:latest@${BUILDER_DIGEST} AS builder
+
+ARG FLAVOR=jdk26valhalla
+ARG LIBC=glibc
+ARG TYPE=distroless
+ARG TARGETARCH
+
+RUN apk add --no-cache curl coreutils bash python3
+
+COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
+COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
+COPY scripts/create_jre.sh /usr/local/bin/create_jre.sh
+RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh /usr/local/bin/create_jre.sh
+
+RUN set -eux; \
+    eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
+    curl -fsSL "${JDK_URL}" -o /tmp/jdk.tar.gz; \
+    verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
+    mkdir -p /opt/jdk; \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
+    rm -f /tmp/jdk.tar.gz; \
+    /usr/local/bin/create_jre.sh /opt/jdk /opt/jre
+
+FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime-glibc
+FROM gcr.io/distroless/static-debian12@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c AS runtime-musl
+
+ARG LIBC=glibc
+FROM runtime-${LIBC} AS runtime
+
+ARG FLAVOR=jdk26valhalla
+ENV JAVA_HOME=/usr/lib/jvm/jre-${FLAVOR}
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=builder /opt/jre ${JAVA_HOME}
+
+USER 65532:65532
+WORKDIR /workspace
+
+LABEL org.opencontainers.image.title="artagon-distroless-${FLAVOR}" \
+      org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
+      org.opencontainers.image.sbom="https://github.com/artagon/artagon-containers/releases/latest/download/distroless-${FLAVOR}.cdx.json" \
+      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception"
+
+ENTRYPOINT ["java"]
+CMD ["--version"]
