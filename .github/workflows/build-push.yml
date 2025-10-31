@@ -71,11 +71,26 @@ jobs:
               --set *.cache-to=type=gha,mode=max \
               --push
           else
-            docker buildx bake ${{ matrix.target }} \
-              --set *.args.SOURCE_DATE_EPOCH=$(date +%s) \
-              --set *.cache-from=type=gha \
-              --set ${{ matrix.target }}.platform=linux/amd64 \
-              --load
+            # Extract build config from bake file
+            CONFIG=$(docker buildx bake ${{ matrix.target }} --print)
+            DOCKERFILE=$(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".dockerfile')
+            TAGS=$(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".tags[0]')
+
+            # Build for single platform (PR testing)
+            BUILDX_ARGS=""
+            for arg in $(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".args | to_entries[] | "\(.key)=\(.value)"'); do
+              BUILDX_ARGS="$BUILDX_ARGS --build-arg $arg"
+            done
+
+            docker buildx build \
+              --file "$DOCKERFILE" \
+              --platform linux/amd64 \
+              --tag "$TAGS" \
+              --cache-from type=gha \
+              --build-arg SOURCE_DATE_EPOCH=$(date +%s) \
+              $BUILDX_ARGS \
+              --load \
+              .
           fi
 
       - name: Generate SBOM
