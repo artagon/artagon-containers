@@ -1,32 +1,35 @@
 # syntax=docker/dockerfile:1.7
-ARG LIBC
+ARG LIBC=glibc
 ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
 ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d"
 
-FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS builder-glibc
-FROM alpine:3.20@${ALPINE_DIGEST} AS builder-musl
+FROM alpine:3.20@${ALPINE_DIGEST} AS musl-loader
 
-ARG LIBC=glibc
-FROM builder-${LIBC} AS builder
+FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS builder
 
 ARG FLAVOR=jdk26valhalla
 ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN if [ "${LIBC}" = "glibc" ]; then \
-      apk add --no-cache curl coreutils bash python3 ca-certificates binutils glibc glibc-locale-posix libgcc; \
-    else \
-      apk add --no-cache curl coreutils bash python3 ca-certificates binutils; \
-    fi
+RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
 COPY scripts/create_jre.sh /usr/local/bin/create_jre.sh
+COPY --from=musl-loader /lib/ld-musl-*.so.1 /opt/musl/
 RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh /usr/local/bin/create_jre.sh
 
 RUN set -eux; \
     eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
+    if [ "${LIBC}" = "musl" ]; then \
+      cp /opt/musl/ld-musl-*.so.1 /lib/; \
+      if ! echo "${JDK_URL}" | grep -q "musl"; then \
+        apk add --no-cache glibc glibc-locale-posix libgcc; \
+      fi; \
+    else \
+      apk add --no-cache glibc glibc-locale-posix libgcc; \
+    fi; \
     curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error "${JDK_URL}" -o /tmp/jdk.tar.gz; \
     verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
     mkdir -p /opt/jdk; \
