@@ -1,14 +1,24 @@
 # syntax=docker/dockerfile:1.7
 ARG LIBC
-ARG BUILDER_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
-FROM cgr.dev/chainguard/wolfi-base:latest@${BUILDER_DIGEST} AS builder
+ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d"
+
+FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS builder-glibc
+FROM alpine:3.20@${ALPINE_DIGEST} AS builder-musl
+
+ARG LIBC=glibc
+FROM builder-${LIBC} AS builder
 
 ARG FLAVOR=jdk25
 ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils glibc glibc-locale-posix libgcc
+RUN if [ "${LIBC}" = "glibc" ]; then \
+      apk add --no-cache curl coreutils bash python3 ca-certificates binutils glibc glibc-locale-posix libgcc; \
+    else \
+      apk add --no-cache curl coreutils bash python3 ca-certificates binutils; \
+    fi
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
