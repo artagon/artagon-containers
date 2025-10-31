@@ -118,7 +118,7 @@ spec:
 sudo apparmor_parser -r security/apparmor-java.txt
 
 # Verify profile loaded
-aa-status | grep artagon-java
+aa-status | grep -q artagon-java && echo 'Profile loaded' || echo 'Profile not found'
 
 # Use in Docker
 docker run --security-opt apparmor=artagon-java <image>
