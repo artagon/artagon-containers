@@ -78,7 +78,7 @@ jobs:
             TAGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].tags[0]')
 
             # Extract build args (excluding SOURCE_DATE_EPOCH which we'll override)
-            BUILDX_ARGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | to_entries[] | select(.key != "SOURCE_DATE_EPOCH") | select(.value != "") | "--build-arg \(.key)=\(.value)"' | tr '\n' ' ')
+            BUILDX_ARGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | del(.SOURCE_DATE_EPOCH) | to_entries[] | "--build-arg \(.key)=\(.value)"' | tr '\n' ' ')
 
             docker buildx build \
               --file "$DOCKERFILE" \
