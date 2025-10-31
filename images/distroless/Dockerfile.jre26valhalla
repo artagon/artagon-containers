@@ -7,7 +7,7 @@ ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3
+RUN apk add --no-cache curl coreutils bash python3 ca-certificates
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
@@ -16,7 +16,7 @@ RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh /usr/
 
 RUN set -eux; \
     eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
-    curl -fsSL "${JDK_URL}" -o /tmp/jdk.tar.gz; \
+    curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error "${JDK_URL}" -o /tmp/jdk.tar.gz; \
     verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
     mkdir -p /opt/jdk; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
