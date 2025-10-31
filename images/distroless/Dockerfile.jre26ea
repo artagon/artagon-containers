@@ -75,7 +75,11 @@ WORKDIR /workspace
 LABEL org.opencontainers.image.title="artagon-distroless-${FLAVOR}" \
       org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
       org.opencontainers.image.sbom="https://github.com/artagon/artagon-containers/releases/latest/download/distroless-${FLAVOR}.cdx.json" \
-      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception"
+      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json" \
+      org.opencontainers.image.description="Distroless images require health checks at orchestration level (no shell available)"
 
 ENTRYPOINT ["java"]
 CMD ["--version"]

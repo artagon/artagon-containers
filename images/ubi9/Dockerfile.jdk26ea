@@ -28,17 +28,25 @@ ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=builder /opt/jdk ${JAVA_HOME}
+COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
 RUN microdnf install -y shadow-utils && microdnf clean all \
  && useradd --uid 65532 --shell /sbin/nologin runner \
- && ln -sf ${JAVA_HOME} /usr/lib/jvm/default
+ && ln -sf ${JAVA_HOME} /usr/lib/jvm/default \
+ && chmod +x /usr/local/bin/health-check.sh
 
 USER 65532:65532
 WORKDIR /workspace
 
 LABEL org.opencontainers.image.title="artagon-ubi9-${FLAVOR}" \
       org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
-      org.opencontainers.image.source="https://github.com/artagon/artagon-containers"
+      org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/local/bin/health-check.sh"]
 
 ENTRYPOINT ["java"]
 CMD ["--version"]
