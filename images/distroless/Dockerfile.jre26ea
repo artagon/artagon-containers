@@ -8,7 +8,7 @@ ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils
+RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils glibc glibc-locale-posix libgcc
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
