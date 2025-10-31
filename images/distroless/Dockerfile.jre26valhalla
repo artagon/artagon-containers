@@ -12,7 +12,16 @@ ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+      if apk add --no-cache curl coreutils bash python3 ca-certificates binutils; then \
+        break; \
+      fi; \
+      if [ "$attempt" -eq 3 ]; then \
+        exit 1; \
+      fi; \
+      sleep $((attempt * 2)); \
+    done
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
@@ -21,14 +30,25 @@ COPY --from=musl-loader /lib/ld-musl-*.so.1 /opt/musl/
 RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh /usr/local/bin/create_jre.sh
 
 RUN set -eux; \
+    apk_retry() { \
+      for attempt in 1 2 3; do \
+        if apk add --no-cache "$@"; then \
+          return 0; \
+        fi; \
+        if [ "$attempt" -eq 3 ]; then \
+          return 1; \
+        fi; \
+        sleep $((attempt * 2)); \
+      done; \
+    }; \
     eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
     if [ "${LIBC}" = "musl" ]; then \
       cp /opt/musl/ld-musl-*.so.1 /lib/; \
       if ! echo "${JDK_URL}" | grep -q "musl"; then \
-        apk add --no-cache glibc glibc-locale-posix libgcc; \
+        apk_retry glibc glibc-locale-posix libgcc; \
       fi; \
     else \
-      apk add --no-cache glibc glibc-locale-posix libgcc; \
+      apk_retry glibc glibc-locale-posix libgcc; \
     fi; \
     curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error "${JDK_URL}" -o /tmp/jdk.tar.gz; \
     verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
