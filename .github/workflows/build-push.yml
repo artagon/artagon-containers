@@ -74,6 +74,7 @@ jobs:
             docker buildx bake ${{ matrix.target }} \
               --set *.args.SOURCE_DATE_EPOCH=$(date +%s) \
               --set *.cache-from=type=gha \
+              --set *.platforms=linux/amd64 \
               --load
           fi
 
