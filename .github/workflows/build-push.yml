@@ -91,6 +91,43 @@ jobs:
               .
           fi
 
+      - name: Test health check
+        if: github.event_name == 'pull_request'
+        run: |
+          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
+
+          # Test 1: Verify health check script exists in non-distroless images
+          if [[ "${{ matrix.target }}" != distroless-* ]]; then
+            echo "Testing health check script presence..."
+            docker run --rm "$IMAGE_REF" sh -c "test -x /usr/local/bin/health-check.sh && echo 'Health check script found and executable'"
+          fi
+
+          # Test 2: Run health check in JVM mode (works for all images)
+          echo "Testing JVM health check..."
+          if [[ "${{ matrix.target }}" == distroless-* ]]; then
+            # Distroless: Just verify java works
+            docker run --rm "$IMAGE_REF" java -version
+            echo "✅ Distroless JVM verification passed"
+          else
+            # Other images: Test health check script
+            docker run --rm -e HEALTH_CHECK_MODE=jvm "$IMAGE_REF" /usr/local/bin/health-check.sh
+            echo "✅ Health check passed in JVM mode"
+          fi
+
+          # Test 3: Verify OCI security labels
+          echo "Verifying security labels..."
+          docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.capabilities"}}'  | grep -q "NONE"
+          docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.readonly-rootfs"}}' | grep -q "recommended"
+          docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.seccomp"}}' | grep -q "seccomp-java.json"
+          echo "✅ Security labels verified"
+
+          # Test 4: Verify HEALTHCHECK (non-distroless only)
+          if [[ "${{ matrix.target }}" != distroless-* ]]; then
+            echo "Verifying HEALTHCHECK instruction..."
+            docker inspect "$IMAGE_REF" --format='{{json .Config.Healthcheck}}' | grep -q "health-check.sh"
+            echo "✅ HEALTHCHECK instruction verified"
+          fi
+
       - name: Generate SBOM
         run: |
           mkdir -p sbom
