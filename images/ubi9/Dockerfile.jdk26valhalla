@@ -7,7 +7,7 @@ ARG LIBC=glibc
 ARG TYPE=ubi9
 ARG TARGETARCH
 
-RUN microdnf install -y curl tar coreutils gzip ca-certificates python3 && microdnf clean all
+RUN dnf install -y curl tar coreutils gzip ca-certificates python3 && dnf clean all
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
