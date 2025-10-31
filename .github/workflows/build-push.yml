@@ -80,10 +80,6 @@ jobs:
             # Extract build args (excluding SOURCE_DATE_EPOCH which we'll override)
             BUILDX_ARGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | del(.SOURCE_DATE_EPOCH) | to_entries[] | "--build-arg \(.key)=\(.value)"' | tr '\n' ' ')
 
-            echo "DEBUG: DOCKERFILE=$DOCKERFILE"
-            echo "DEBUG: TAGS=$TAGS"
-            echo "DEBUG: BUILDX_ARGS=$BUILDX_ARGS"
-
             docker buildx build \
               --file "$DOCKERFILE" \
               --platform linux/amd64 \
