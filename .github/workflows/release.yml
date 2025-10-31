@@ -11,32 +11,129 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
       - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+
       - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
-      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+
+      - name: Install Syft
+        run: |
+          curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error \
+            https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Login to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - name: Build & Push
-        run: docker buildx bake --push
-      - name: Collect SBOMs
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
         run: |
-          mkdir -p sbom-bundle
-          cp sbom/*.cdx.json sbom-bundle/ || true
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Build & Push
+        run: |
+          docker buildx bake --push \
+            --set *.args.SOURCE_DATE_EPOCH=$(date +%s) \
+            --set *.cache-from=type=gha \
+            --set *.cache-to=type=gha,mode=max
+
+      - name: Generate SBOMs
+        run: |
+          mkdir -p sbom sbom-bundle
+          for tag in $(docker buildx bake --print | jq -r '.target | keys[]'); do
+            echo "Generating SBOM for ${tag}..."
+            syft ${REGISTRY}:${tag} -o cyclonedx-json > sbom/${tag}.cdx.json
+            cp sbom/${tag}.cdx.json sbom-bundle/${tag}.cdx.json
+          done
+          echo "Generated $(ls sbom/*.cdx.json | wc -l) SBOM files"
+
       - name: Sign & Attest
         run: |
           for tag in $(docker buildx bake --print | jq -r '.target | keys[]'); do
+            echo "Signing ${tag}..."
             cosign sign --yes ${REGISTRY}:${tag}
+
             if [[ -f sbom/${tag}.cdx.json ]]; then
-              cosign attest --predicate sbom/${tag}.cdx.json --type cyclonedx ${REGISTRY}:${tag}
+              echo "Attesting SBOM for ${tag}..."
+              cosign attest --yes --predicate sbom/${tag}.cdx.json --type cyclonedx ${REGISTRY}:${tag}
             fi
           done
+
       - name: Create Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2
         with:
           files: sbom-bundle/*.cdx.json
           generate_release_notes: true
+          body: |
+            ## Container Images Released 🚀
+
+            All 15 image variants have been built, signed, and published to GHCR.
+
+            **Version**: ${{ steps.version.outputs.version }}
+            **Registry**: `ghcr.io/${{ github.repository }}`
+
+            ### Image Variants
+
+            **Chainguard (Wolfi + musl)**:
+            - `chainguard-jdk25`, `chainguard-jdk25-musl`
+            - `chainguard-jdk26ea`, `chainguard-jdk26ea-musl`
+            - `chainguard-jdk26valhalla`, `chainguard-jdk26valhalla-musl`
+
+            **Google Distroless**:
+            - `distroless-jre25`, `distroless-jre25-musl`
+            - `distroless-jre26ea`, `distroless-jre26ea-musl`
+            - `distroless-jre26valhalla`, `distroless-jre26valhalla-musl`
+
+            **Red Hat UBI 9**:
+            - `ubi9-jdk25`
+            - `ubi9-jdk26ea`
+            - `ubi9-jdk26valhalla`
+
+            ### Security
+
+            ✅ All images signed with Cosign (keyless)
+            ✅ SBOM attestations attached (CycloneDX format)
+            ✅ SLSA provenance available
+            ✅ Multi-architecture support (amd64/arm64)
+
+            ### Verification
+
+            ```bash
+            # Verify signature
+            COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/${{ github.repository }}:chainguard-jdk25
+
+            # Download SBOM
+            cosign download sbom ghcr.io/${{ github.repository }}:chainguard-jdk25
+
+            # Verify attestation
+            cosign verify-attestation --type cyclonedx ghcr.io/${{ github.repository }}:chainguard-jdk25
+            ```
+
+            ### Usage
+
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:chainguard-jdk25
+            docker run --rm ghcr.io/${{ github.repository }}:chainguard-jdk25 java --version
+            ```
+
+            ---
+
+            📄 **SBOMs**: Attached to this release
+            🔐 **Signatures**: Keyless Cosign with Rekor transparency log
+            📋 **License**: AGPL-3.0 or Commercial (see LICENSE)
