@@ -77,13 +77,8 @@ jobs:
             DOCKERFILE=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].dockerfile')
             TAGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].tags[0]')
 
-            # Extract build args
-            BUILDX_ARGS=""
-            while IFS='=' read -r key value; do
-              if [ -n "$key" ] && [ -n "$value" ]; then
-                BUILDX_ARGS="$BUILDX_ARGS --build-arg $key=$value"
-              fi
-            done < <(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | to_entries[] | "\(.key)=\(.value)"')
+            # Extract build args (excluding SOURCE_DATE_EPOCH which we'll override)
+            BUILDX_ARGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | to_entries[] | select(.key != "SOURCE_DATE_EPOCH") | select(.value != "") | "--build-arg \(.key)=\(.value)"' | tr '\n' ' ')
 
             docker buildx build \
               --file "$DOCKERFILE" \
