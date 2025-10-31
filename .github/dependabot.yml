@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/images/chainguard"
+    schedule:
+      interval: daily
+  - package-ecosystem: "docker"
+    directory: "/images/distroless"
+    schedule:
+      interval: daily
+  - package-ecosystem: "docker"
+    directory: "/images/ubi9"
+    schedule:
+      interval: daily

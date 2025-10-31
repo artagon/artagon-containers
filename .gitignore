@@ -1,0 +1,4 @@
+.env/
+sbom/*.json
+*.log
+tmp/

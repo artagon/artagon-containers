@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: artagon-containers
+Source: https://github.com/artagon/artagon-containers
+
+Files: *
+License: Apache-2.0
+
+Files: images/*/README.md
+License: CC-BY-4.0
