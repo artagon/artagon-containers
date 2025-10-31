@@ -72,15 +72,18 @@ jobs:
               --push
           else
             # Extract build config from bake file
-            CONFIG=$(docker buildx bake ${{ matrix.target }} --print)
-            DOCKERFILE=$(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".dockerfile')
-            TAGS=$(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".tags[0]')
+            TARGET="${{ matrix.target }}"
+            CONFIG=$(docker buildx bake $TARGET --print)
+            DOCKERFILE=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].dockerfile')
+            TAGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].tags[0]')
 
-            # Build for single platform (PR testing)
+            # Extract build args
             BUILDX_ARGS=""
-            for arg in $(echo "$CONFIG" | jq -r '.target."${{ matrix.target }}".args | to_entries[] | "\(.key)=\(.value)"'); do
-              BUILDX_ARGS="$BUILDX_ARGS --build-arg $arg"
-            done
+            while IFS='=' read -r key value; do
+              if [ -n "$key" ] && [ -n "$value" ]; then
+                BUILDX_ARGS="$BUILDX_ARGS --build-arg $key=$value"
+              fi
+            done < <(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | to_entries[] | "\(.key)=\(.value)"')
 
             docker buildx build \
               --file "$DOCKERFILE" \
