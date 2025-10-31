@@ -115,7 +115,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'security,vulnerability',
+              labels: ['security', 'vulnerability'],
               per_page: 100
             });
 
