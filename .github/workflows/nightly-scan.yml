@@ -1,0 +1,30 @@
+name: Nightly Vulnerability Scan
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}:chainguard-jdk25
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+      - uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
+        with:
+          image: ${{ env.REGISTRY }}:distroless-jre25
+      - uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
+        with:
+          image: ${{ env.REGISTRY }}:ubi9-jdk25
+      - name: Trivy aggregate
+        run: |
+          for tag in chainguard-jdk26ea chainguard-jdk26valhalla distroless-jre26ea distroless-jre26valhalla ubi9-jdk26ea ubi9-jdk26valhalla; do
+            trivy image --exit-code 0 --severity HIGH,CRITICAL ${REGISTRY}:$tag
+          done

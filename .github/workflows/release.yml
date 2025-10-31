@@ -1,0 +1,42 @@
+name: Release Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository }}
+  COSIGN_EXPERIMENTAL: "1"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+      - uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build & Push
+        run: docker buildx bake --push
+      - name: Collect SBOMs
+        run: |
+          mkdir -p sbom-bundle
+          cp sbom/*.cdx.json sbom-bundle/ || true
+      - name: Sign & Attest
+        run: |
+          for tag in $(docker buildx bake --print | jq -r '.target | keys[]'); do
+            cosign sign --yes ${REGISTRY}:${tag}
+            if [[ -f sbom/${tag}.cdx.json ]]; then
+              cosign attest --predicate sbom/${tag}.cdx.json --type cyclonedx ${REGISTRY}:${tag}
+            fi
+          done
+      - name: Create Release
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2
+        with:
+          files: sbom-bundle/*.cdx.json
+          generate_release_notes: true
