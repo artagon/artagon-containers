@@ -6,24 +6,18 @@ SOURCE_DATE_EPOCH ?= $(shell date +%s)
 ENV_DIR := .env
 SBOM_DIR := sbom
 
+IMAGE_TAG_chainguard_jdk25 := chainguard-jdk25
+IMAGE_TAG_chainguard_jdk26ea := chainguard-jdk26ea
+IMAGE_TAG_chainguard_jdk26valhalla := chainguard-jdk26valhalla
+IMAGE_TAG_distroless_jdk25 := distroless-jre25
+IMAGE_TAG_distroless_jdk26ea := distroless-jre26ea
+IMAGE_TAG_distroless_jdk26valhalla := distroless-jre26valhalla
+IMAGE_TAG_ubi9_jdk25 := ubi9-jdk25
+IMAGE_TAG_ubi9_jdk26ea := ubi9-jdk26ea
+IMAGE_TAG_ubi9_jdk26valhalla := ubi9-jdk26valhalla
+
 define image_tag
-$(shell case $(1) in \
-  chainguard) case $(2) in \
-      jdk25) echo "chainguard-jdk25";; \
-      jdk26ea) echo "chainguard-jdk26ea";; \
-      jdk26valhalla) echo "chainguard-jdk26valhalla";; \
-    esac ;; \
-  distroless) case $(2) in \
-      jdk25) echo "distroless-jre25";; \
-      jdk26ea) echo "distroless-jre26ea";; \
-      jdk26valhalla) echo "distroless-jre26valhalla";; \
-    esac ;; \
-  ubi9) case $(2) in \
-      jdk25) echo "ubi9-jdk25";; \
-      jdk26ea) echo "ubi9-jdk26ea";; \
-      jdk26valhalla) echo "ubi9-jdk26valhalla";; \
-    esac ;; \
-esac)
+$($(strip IMAGE_TAG_$(1)_$(2)))
 endef
 
 .PHONY: all resolve build push sbom scan sign attest lint versions clean
@@ -50,7 +44,12 @@ scan:
 	grype $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
 
 sign:
-	COSIGN_EXPERIMENTAL=1 cosign sign --yes $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
+	@digest=$$(docker buildx imagetools inspect $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR)) --format '{{json .Manifest.Digest}}' | tr -d '"'); \
+	if [ -z "$$digest" ]; then \
+		echo "Unable to resolve digest for $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))" >&2; \
+		exit 1; \
+	fi; \
+	COSIGN_EXPERIMENTAL=1 cosign sign --yes $(REGISTRY)@$$digest
 
 attest: sbom
 	COSIGN_EXPERIMENTAL=1 cosign attest \
