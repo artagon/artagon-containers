@@ -96,7 +96,7 @@ jvm_execution_check() {
   '
 
   # JDK 11+ supports single-file source-code execution
-  if echo "$HEALTH_CHECK_CODE" | timeout 2s java - >/dev/null 2>&1; then
+  if echo "$HEALTH_CHECK_CODE" | sed 's/^ *//' | timeout 2s java - >/dev/null 2>&1; then
     return 0
   fi
 
