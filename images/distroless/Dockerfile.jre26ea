@@ -1,4 +1,5 @@
 # syntax=docker/dockerfile:1.7
+ARG LIBC
 ARG BUILDER_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
 FROM cgr.dev/chainguard/wolfi-base:latest@${BUILDER_DIGEST} AS builder
 
@@ -7,7 +8,7 @@ ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3 ca-certificates
+RUN apk add --no-cache curl coreutils bash python3 ca-certificates binutils glibc glibc-locale-posix libgcc
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh

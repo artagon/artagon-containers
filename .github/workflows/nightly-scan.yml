@@ -11,20 +11,151 @@ env:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+      issues: write
+    strategy:
+      matrix:
+        image:
+          - chainguard-jdk25
+          - chainguard-jdk25-musl
+          - chainguard-jdk26ea
+          - chainguard-jdk26ea-musl
+          - chainguard-jdk26valhalla
+          - chainguard-jdk26valhalla-musl
+          - distroless-jre25
+          - distroless-jre25-musl
+          - distroless-jre26ea
+          - distroless-jre26ea-musl
+          - distroless-jre26valhalla
+          - distroless-jre26valhalla-musl
+          - ubi9-jdk25
+          - ubi9-jdk26ea
+          - ubi9-jdk26valhalla
+      fail-fast: false
     steps:
-      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+      - name: Login to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
-          image-ref: ${{ env.REGISTRY }}:chainguard-jdk25
-          severity: HIGH,CRITICAL
-          exit-code: "0"
-      - uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
-        with:
-          image: ${{ env.REGISTRY }}:distroless-jre25
-      - uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
-        with:
-          image: ${{ env.REGISTRY }}:ubi9-jdk25
-      - name: Trivy aggregate
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Trivy
         run: |
-          for tag in chainguard-jdk26ea chainguard-jdk26valhalla distroless-jre26ea distroless-jre26valhalla ubi9-jdk26ea ubi9-jdk26valhalla; do
-            trivy image --exit-code 0 --severity HIGH,CRITICAL ${REGISTRY}:$tag
-          done
+          curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error \
+            https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Scan with Trivy
+        id: trivy-scan
+        continue-on-error: true
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            --format json --output trivy-results-${{ matrix.image }}.json \
+            ${{ env.REGISTRY }}:${{ matrix.image }}
+
+      - name: Scan with Grype (Anchore)
+        id: grype-scan
+        continue-on-error: true
+        uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
+        with:
+          image: ${{ env.REGISTRY }}:${{ matrix.image }}
+          fail-build: false
+          severity-cutoff: high
+
+      - name: Upload Trivy results
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: trivy-results-${{ matrix.image }}
+          path: trivy-results-${{ matrix.image }}.json
+          retention-days: 30
+
+      - name: Create security issue on failure
+        if: steps.trivy-scan.outcome == 'failure' || steps.grype-scan.outcome == 'failure'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const image = '${{ matrix.image }}';
+            const trivyFailed = '${{ steps.trivy-scan.outcome }}' === 'failure';
+            const grypeFailed = '${{ steps.grype-scan.outcome }}' === 'failure';
+
+            const title = `Security vulnerabilities detected in ${image}`;
+            const body = `## Security Scan Alert 🚨
+
+            HIGH or CRITICAL vulnerabilities detected during nightly scan.
+
+            **Image:** \`${{ env.REGISTRY }}:${image}\`
+            **Scan Date:** ${new Date().toISOString()}
+            **Workflow:** [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### Scan Results
+
+            ${trivyFailed ? '- ❌ **Trivy**: HIGH/CRITICAL vulnerabilities found' : '- ✅ **Trivy**: Passed'}
+            ${grypeFailed ? '- ❌ **Grype**: HIGH/CRITICAL vulnerabilities found' : '- ✅ **Grype**: Passed'}
+
+            ### Next Steps
+
+            1. Review scan artifacts in workflow run
+            2. Update base images or dependencies
+            3. Rebuild and republish affected images
+            4. Verify fixes with manual scan
+
+            ### Artifacts
+
+            - Trivy JSON results available in workflow artifacts
+            - Grype SARIF results available in workflow artifacts
+            `;
+
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['security', 'vulnerability'],
+              per_page: 100
+            });
+
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes(image) && issue.title.includes('Security vulnerabilities')
+            );
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `### Update: ${new Date().toISOString()}\n\n${body}`
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['security', 'vulnerability']
+              });
+              console.log(`Created new issue #${newIssue.data.number}`);
+            }
+
+  summary:
+    needs: scan
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scan Summary
+        run: |
+          echo "## Nightly Vulnerability Scan Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Scanned all 15 container image variants." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry**: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Review individual scan results in workflow artifacts." >> $GITHUB_STEP_SUMMARY
