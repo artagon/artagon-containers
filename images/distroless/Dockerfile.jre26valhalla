@@ -57,11 +57,9 @@ RUN set -eux; \
     rm -f /tmp/jdk.tar.gz; \
     /usr/local/bin/create_jre.sh /opt/jdk /opt/jre
 
-FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime-glibc
-FROM gcr.io/distroless/static-debian12@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c AS runtime-musl
-
-ARG LIBC=glibc
-FROM runtime-${LIBC} AS runtime
+# Note: Distroless static-debian12 has no libc, cannot run JDK binaries
+# Use base-debian12 (glibc) for both variants
+FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime
 
 ARG FLAVOR=jdk26valhalla
 ENV JAVA_HOME=/usr/lib/jvm/jre-${FLAVOR}

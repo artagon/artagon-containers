@@ -99,8 +99,8 @@ jobs:
           # Test 1: Run health check (works for all non-distroless images)
           echo "Testing health check functionality..."
           if [[ "${{ matrix.target }}" == distroless-* ]]; then
-            # Distroless: Just verify java works (no shell available)
-            docker run --rm "$IMAGE_REF" java -version
+            # Distroless: Just verify java works (ENTRYPOINT is ["java"], pass only arguments)
+            docker run --rm "$IMAGE_REF" -version
             echo "✅ Distroless JVM verification passed"
           else
             # Other images: Test health check script directly
