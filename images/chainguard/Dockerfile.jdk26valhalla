@@ -1,9 +1,16 @@
 # syntax=docker/dockerfile:1.7
-ARG BASE_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
-FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST} AS builder
+ARG LIBC=glibc
+ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d"
+
+FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS builder-glibc
+FROM alpine:3.20@${ALPINE_DIGEST} AS builder-musl
+
+ARG LIBC=glibc
+FROM builder-${LIBC} AS builder
 
 ARG FLAVOR=jdk26valhalla
-ARG LIBC=musl
+ARG LIBC=glibc
 ARG TYPE=chainguard
 ARG TARGETARCH
 
@@ -21,7 +28,11 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
     rm -f /tmp/jdk.tar.gz
 
-FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST}
+FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS runtime-glibc
+FROM alpine:3.20@${ALPINE_DIGEST} AS runtime-musl
+
+ARG LIBC=glibc
+FROM runtime-${LIBC} AS runtime
 
 ARG FLAVOR=jdk26valhalla
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
@@ -30,9 +41,10 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=builder /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
 COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
-RUN adduser -D -u 65532 runner 2>/dev/null || true \
- && ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default \
- && chmod +x /usr/local/bin/health-check.sh
+RUN set -eux; \
+    adduser -D -u 65532 runner 2>/dev/null || true; \
+    ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default; \
+    chmod +x /usr/local/bin/health-check.sh
 
 WORKDIR /workspace
 USER 65532:65532

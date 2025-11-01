@@ -41,13 +41,16 @@ target "chainguard-jdk25" {
   dockerfile = "images/chainguard/Dockerfile.jdk25"
   args = {
     FLAVOR = "jdk25"
-    LIBC   = "musl"
+    LIBC   = "glibc"
   }
   tags = ["${REGISTRY}:chainguard-jdk25"]
 }
 
 target "chainguard-jdk25-musl" {
   inherits = ["chainguard-jdk25"]
+  args = {
+    LIBC = "musl"
+  }
   tags     = ["${REGISTRY}:chainguard-jdk25-musl"]
 }
 
@@ -56,13 +59,16 @@ target "chainguard-jdk26ea" {
   dockerfile = "images/chainguard/Dockerfile.jdk26ea"
   args = {
     FLAVOR = "jdk26ea"
-    LIBC   = "musl"
+    LIBC   = "glibc"
   }
   tags = ["${REGISTRY}:chainguard-jdk26ea"]
 }
 
 target "chainguard-jdk26ea-musl" {
   inherits = ["chainguard-jdk26ea"]
+  args = {
+    LIBC = "musl"
+  }
   tags     = ["${REGISTRY}:chainguard-jdk26ea-musl"]
 }
 
@@ -71,13 +77,16 @@ target "chainguard-jdk26valhalla" {
   dockerfile = "images/chainguard/Dockerfile.jdk26valhalla"
   args = {
     FLAVOR = "jdk26valhalla"
-    LIBC   = "musl"
+    LIBC   = "glibc"
   }
   tags = ["${REGISTRY}:chainguard-jdk26valhalla"]
 }
 
 target "chainguard-jdk26valhalla-musl" {
   inherits = ["chainguard-jdk26valhalla"]
+  args = {
+    LIBC = "musl"
+  }
   tags     = ["${REGISTRY}:chainguard-jdk26valhalla-musl"]
 }
 
