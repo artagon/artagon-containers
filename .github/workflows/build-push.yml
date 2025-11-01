@@ -91,6 +91,54 @@ jobs:
               .
           fi
 
+      - name: Test health check
+        if: github.event_name == 'pull_request'
+        run: |
+          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
+
+          # Test 1: Run health check (works for all non-distroless images)
+          echo "Testing health check functionality..."
+          if [[ "${{ matrix.target }}" == distroless-* ]]; then
+            # Distroless: Just verify java works (no shell available)
+            docker run --rm "$IMAGE_REF" java -version
+            echo "✅ Distroless JVM verification passed"
+          else
+            # Other images: Test health check script directly
+            # Note: Use /bin/sh from image (Chainguard has busybox sh, UBI9 has bash)
+            docker run --rm -e HEALTH_CHECK_MODE=jvm "$IMAGE_REF" /usr/local/bin/health-check.sh
+            echo "✅ Health check script executed successfully"
+          fi
+
+          # Test 2: Verify OCI security labels
+          echo "Verifying security labels..."
+          CAPS=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.capabilities"}}')
+          ROOTFS=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.readonly-rootfs"}}')
+          SECCOMP=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.seccomp"}}')
+
+          if [[ "$CAPS" == "NONE" && "$ROOTFS" == "recommended" && "$SECCOMP" == *"seccomp-java.json"* ]]; then
+            echo "✅ Security labels verified (caps=$CAPS, rootfs=$ROOTFS, seccomp=$SECCOMP)"
+          else
+            echo "❌ Security labels missing or incorrect"
+            echo "  capabilities: $CAPS (expected: NONE)"
+            echo "  readonly-rootfs: $ROOTFS (expected: recommended)"
+            echo "  seccomp: $SECCOMP (expected: *seccomp-java.json*)"
+            exit 1
+          fi
+
+          # Test 3: Verify HEALTHCHECK instruction (non-distroless only)
+          if [[ "${{ matrix.target }}" != distroless-* ]]; then
+            echo "Verifying HEALTHCHECK instruction..."
+            HEALTHCHECK=$(docker inspect "$IMAGE_REF" --format='{{json .Config.Healthcheck}}')
+            if echo "$HEALTHCHECK" | grep -q "health-check.sh"; then
+              echo "✅ HEALTHCHECK instruction verified"
+            else
+              echo "❌ HEALTHCHECK instruction missing or incorrect: $HEALTHCHECK"
+              exit 1
+            fi
+          fi
+
+          echo "🎉 All health check and security tests passed for ${{ matrix.target }}"
+
       - name: Generate SBOM
         run: |
           mkdir -p sbom

@@ -28,9 +28,11 @@ ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=builder /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
+COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
 RUN adduser -D -u 65532 runner 2>/dev/null || true \
- && ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default
+ && ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default \
+ && chmod +x /usr/local/bin/health-check.sh
 
 WORKDIR /workspace
 USER 65532:65532
@@ -39,7 +41,13 @@ LABEL org.opencontainers.image.title="artagon-chainguard-${FLAVOR}" \
       org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
       org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
       org.opencontainers.image.vendor="Artagon" \
-      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}"
+      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/local/bin/health-check.sh"]
 
 ENTRYPOINT ["java"]
 CMD ["--version"]

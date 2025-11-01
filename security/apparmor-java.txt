@@ -1,0 +1,78 @@
+#include <tunables/global>
+
+profile artagon-java flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # JDK installation (read-only)
+  /usr/lib/jvm/** r,
+
+  # Application workspace (read-only by default)
+  /workspace/** r,
+
+  # Temporary directory (read-write)
+  /tmp/** rw,
+
+  # Random number generation
+  /dev/urandom r,
+  /dev/random r,
+
+  # Process information
+  /proc/sys/kernel/random/boot_id r,
+  /proc/sys/vm/overcommit_memory r,
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/stat r,
+  /proc/*/maps r,
+  /proc/*/stat r,
+  /proc/*/status r,
+  /proc/*/task/*/stat r,
+
+  # System information
+  /sys/devices/system/cpu/** r,
+  /sys/devices/system/node/** r,
+
+  # Network configuration (for container networking)
+  /etc/hosts r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  /etc/services r,
+  /etc/protocols r,
+
+  # SSL/TLS certificates
+  /etc/ssl/** r,
+  /etc/pki/** r,
+  /usr/share/ca-certificates/** r,
+
+  # Timezone data
+  /usr/share/zoneinfo/** r,
+  /etc/localtime r,
+
+  # Character encoding
+  /usr/share/locale/** r,
+
+  # Deny sensitive paths
+  deny /etc/shadow r,
+  deny /etc/gshadow r,
+  deny /root/** rwx,
+  deny @{HOME}/.ssh/** rwx,
+  deny /proc/kcore rwx,
+  deny /boot/** rwx,
+  deny /sys/kernel/debug/** rwx,
+
+  # Network capabilities (allow sockets)
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+  network unix stream,
+  network unix dgram,
+
+  # Signal capabilities
+  signal (receive) peer=unconfined,
+  signal (send) peer=artagon-java,
+
+  # Capability restrictions
+  capability setuid,
+  capability setgid,
+  capability net_bind_service,
+}
