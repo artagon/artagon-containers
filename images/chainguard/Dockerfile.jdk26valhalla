@@ -28,11 +28,9 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
     rm -f /tmp/jdk.tar.gz
 
-FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS runtime-glibc
-FROM alpine:3.20@${ALPINE_DIGEST} AS runtime-musl
-
-ARG LIBC=glibc
-FROM runtime-${LIBC} AS runtime
+# Note: JDK 26 Valhalla doesn't provide musl binaries, only glibc
+# Use Wolfi (glibc) runtime for both variants
+FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS runtime
 
 ARG FLAVOR=jdk26valhalla
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}

@@ -104,8 +104,8 @@ jobs:
             echo "✅ Distroless JVM verification passed"
           else
             # Other images: Test health check script directly
-            # Note: Use /bin/sh from image (Chainguard has busybox sh, UBI9 has bash)
-            docker run --rm -e HEALTH_CHECK_MODE=jvm "$IMAGE_REF" /usr/local/bin/health-check.sh
+            # Note: Override entrypoint since Chainguard/UBI9 have ENTRYPOINT=["java"]
+            docker run --rm --entrypoint="" -e HEALTH_CHECK_MODE=jvm "$IMAGE_REF" /usr/local/bin/health-check.sh
             echo "✅ Health check script executed successfully"
           fi
 
