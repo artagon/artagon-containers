@@ -102,10 +102,10 @@ jvm_execution_check() {
 
   # Fallback: Try jshell (JDK 9+)
   if command -v jshell >/dev/null 2>&1; then
-    if [ "$(echo "Runtime.getRuntime().availableProcessors() > 0 ? 0 : 1" | timeout 2s jshell -q | tail -1 | tr -d ';\r\n ')" = "0" ]; then
+    # Extract result value from jshell output (format: "$N ==> VALUE")
+    result=$(echo "Runtime.getRuntime().availableProcessors() > 0 ? 0 : 1" | timeout 2s jshell -q 2>/dev/null | grep '==>' | tail -1 | awk '{print $NF}')
+    if [ "$result" = "0" ]; then
       return 0
-    else
-      return 1
     fi
   fi
 
