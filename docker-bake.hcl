@@ -195,77 +195,77 @@ target "common-ci" {
 }
 
 target "ci-chainguard-jdk25" {
-  inherits = ["common-ci", "chainguard-jdk25"]
+  inherits = ["chainguard-jdk25", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk25"]
 }
 
 target "ci-chainguard-jdk25-musl" {
-  inherits = ["common-ci", "chainguard-jdk25-musl"]
+  inherits = ["chainguard-jdk25-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk25-musl"]
 }
 
 target "ci-chainguard-jdk26ea" {
-  inherits = ["common-ci", "chainguard-jdk26ea"]
+  inherits = ["chainguard-jdk26ea", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk26ea"]
 }
 
 target "ci-chainguard-jdk26ea-musl" {
-  inherits = ["common-ci", "chainguard-jdk26ea-musl"]
+  inherits = ["chainguard-jdk26ea-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk26ea-musl"]
 }
 
 target "ci-chainguard-jdk26valhalla" {
-  inherits = ["common-ci", "chainguard-jdk26valhalla"]
+  inherits = ["chainguard-jdk26valhalla", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk26valhalla"]
 }
 
 target "ci-chainguard-jdk26valhalla-musl" {
-  inherits = ["common-ci", "chainguard-jdk26valhalla-musl"]
+  inherits = ["chainguard-jdk26valhalla-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-chainguard-jdk26valhalla-musl"]
 }
 
 target "ci-distroless-jre25" {
-  inherits = ["common-ci", "distroless-jre25"]
+  inherits = ["distroless-jre25", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre25"]
 }
 
 target "ci-distroless-jre25-musl" {
-  inherits = ["common-ci", "distroless-jre25-musl"]
+  inherits = ["distroless-jre25-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre25-musl"]
 }
 
 target "ci-distroless-jre26ea" {
-  inherits = ["common-ci", "distroless-jre26ea"]
+  inherits = ["distroless-jre26ea", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre26ea"]
 }
 
 target "ci-distroless-jre26ea-musl" {
-  inherits = ["common-ci", "distroless-jre26ea-musl"]
+  inherits = ["distroless-jre26ea-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre26ea-musl"]
 }
 
 target "ci-distroless-jre26valhalla" {
-  inherits = ["common-ci", "distroless-jre26valhalla"]
+  inherits = ["distroless-jre26valhalla", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre26valhalla"]
 }
 
 target "ci-distroless-jre26valhalla-musl" {
-  inherits = ["common-ci", "distroless-jre26valhalla-musl"]
+  inherits = ["distroless-jre26valhalla-musl", "common-ci"]
   tags     = ["${REGISTRY}:ci-distroless-jre26valhalla-musl"]
 }
 
 target "ci-ubi9-jdk25" {
-  inherits = ["common-ci", "ubi9-jdk25"]
+  inherits = ["ubi9-jdk25", "common-ci"]
   tags     = ["${REGISTRY}:ci-ubi9-jdk25"]
 }
 
 target "ci-ubi9-jdk26ea" {
-  inherits = ["common-ci", "ubi9-jdk26ea"]
+  inherits = ["ubi9-jdk26ea", "common-ci"]
   tags     = ["${REGISTRY}:ci-ubi9-jdk26ea"]
 }
 
 target "ci-ubi9-jdk26valhalla" {
-  inherits = ["common-ci", "ubi9-jdk26valhalla"]
+  inherits = ["ubi9-jdk26valhalla", "common-ci"]
   tags     = ["${REGISTRY}:ci-ubi9-jdk26valhalla"]
 }
 
