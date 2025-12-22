@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 - Enforced linting with pinned package versions across Wolfi/Alpine/UBI images, removed `latest` tags from base references, and required content trust for Dockle.
+- Updated UBI9 minimal base digest to the latest release (libxml2 2.9.13-14.el9_7) to address CVE-2025-12863 scan failures.
 - Split Chainguard JDK25 builds into explicit glibc/musl stages and updated Bake targets for correct variant selection.
 - Added musl loader support in Distroless runtime images and aligned UBI health check dependencies with base-provided tools.
 - Expanded README with CI vs deployment differences, updated image matrix, build process/tooling, pinned dependency versions, and a FIPS 140-3 roadmap.

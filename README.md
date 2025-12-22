@@ -91,7 +91,7 @@ UBI 9 builder packages:
 
 UBI 9 runtime tools come from the pinned base image digest (health checks and user setup rely on these):
 - `coreutils-single-8.32-39.el9`
-- `shadow-utils-4.9-12.el9`
+- `shadow-utils-4.9-15.el9`
 - `sed-4.8-9.el9`
 - `grep-3.6-5.el9`
 - `gawk-5.1.0-6.el9`
