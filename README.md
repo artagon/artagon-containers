@@ -136,6 +136,7 @@ make sign TYPE=chainguard FLAVOR=jdk26ea
 ```
 
 Environment requirements: Docker 24+, Buildx/BuildKit, `jq`, `python3`, `curl`, `cosign`, `syft`, `trivy`, `grype`, `hadolint`, `dockle`.
+Linting note: `make lint` runs Dockle with `DOCKER_CONTENT_TRUST=1` to enforce signature verification.
 
 ## CI/CD
 
