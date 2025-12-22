@@ -67,6 +67,10 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=builder /opt/jre ${JAVA_HOME}
 
+# Note: Distroless images do not support shell or package manager,
+# so we cannot add CI debugging tools here.
+ARG BUILD_TARGET=production
+
 USER 65532:65532
 WORKDIR /workspace
 

@@ -183,3 +183,108 @@ target "ubi9-jdk26valhalla" {
   }
   tags = ["${REGISTRY}:ubi9-jdk26valhalla"]
 }
+
+# CI Targets
+
+target "common-ci" {
+  inherits = ["common"]
+  args = {
+    BUILD_TARGET = "ci"
+  }
+  platforms = ["linux/amd64"]
+}
+
+target "ci-chainguard-jdk25" {
+  inherits = ["common-ci", "chainguard-jdk25"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk25"]
+}
+
+target "ci-chainguard-jdk25-musl" {
+  inherits = ["common-ci", "chainguard-jdk25-musl"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk25-musl"]
+}
+
+target "ci-chainguard-jdk26ea" {
+  inherits = ["common-ci", "chainguard-jdk26ea"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk26ea"]
+}
+
+target "ci-chainguard-jdk26ea-musl" {
+  inherits = ["common-ci", "chainguard-jdk26ea-musl"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk26ea-musl"]
+}
+
+target "ci-chainguard-jdk26valhalla" {
+  inherits = ["common-ci", "chainguard-jdk26valhalla"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk26valhalla"]
+}
+
+target "ci-chainguard-jdk26valhalla-musl" {
+  inherits = ["common-ci", "chainguard-jdk26valhalla-musl"]
+  tags     = ["${REGISTRY}:ci-chainguard-jdk26valhalla-musl"]
+}
+
+target "ci-distroless-jre25" {
+  inherits = ["common-ci", "distroless-jre25"]
+  tags     = ["${REGISTRY}:ci-distroless-jre25"]
+}
+
+target "ci-distroless-jre25-musl" {
+  inherits = ["common-ci", "distroless-jre25-musl"]
+  tags     = ["${REGISTRY}:ci-distroless-jre25-musl"]
+}
+
+target "ci-distroless-jre26ea" {
+  inherits = ["common-ci", "distroless-jre26ea"]
+  tags     = ["${REGISTRY}:ci-distroless-jre26ea"]
+}
+
+target "ci-distroless-jre26ea-musl" {
+  inherits = ["common-ci", "distroless-jre26ea-musl"]
+  tags     = ["${REGISTRY}:ci-distroless-jre26ea-musl"]
+}
+
+target "ci-distroless-jre26valhalla" {
+  inherits = ["common-ci", "distroless-jre26valhalla"]
+  tags     = ["${REGISTRY}:ci-distroless-jre26valhalla"]
+}
+
+target "ci-distroless-jre26valhalla-musl" {
+  inherits = ["common-ci", "distroless-jre26valhalla-musl"]
+  tags     = ["${REGISTRY}:ci-distroless-jre26valhalla-musl"]
+}
+
+target "ci-ubi9-jdk25" {
+  inherits = ["common-ci", "ubi9-jdk25"]
+  tags     = ["${REGISTRY}:ci-ubi9-jdk25"]
+}
+
+target "ci-ubi9-jdk26ea" {
+  inherits = ["common-ci", "ubi9-jdk26ea"]
+  tags     = ["${REGISTRY}:ci-ubi9-jdk26ea"]
+}
+
+target "ci-ubi9-jdk26valhalla" {
+  inherits = ["common-ci", "ubi9-jdk26valhalla"]
+  tags     = ["${REGISTRY}:ci-ubi9-jdk26valhalla"]
+}
+
+group "ci" {
+  targets = [
+    "ci-chainguard-jdk25",
+    "ci-chainguard-jdk25-musl",
+    "ci-chainguard-jdk26ea",
+    "ci-chainguard-jdk26ea-musl",
+    "ci-chainguard-jdk26valhalla",
+    "ci-chainguard-jdk26valhalla-musl",
+    "ci-distroless-jre25",
+    "ci-distroless-jre25-musl",
+    "ci-distroless-jre26ea",
+    "ci-distroless-jre26ea-musl",
+    "ci-distroless-jre26valhalla",
+    "ci-distroless-jre26valhalla-musl",
+    "ci-ubi9-jdk25",
+    "ci-ubi9-jdk26ea",
+    "ci-ubi9-jdk26valhalla",
+  ]
+}

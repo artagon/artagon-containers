@@ -2,6 +2,20 @@
 
 Hardened OCI images for JVM workloads on Chainguard (Wolfi), Google Distroless, and Red Hat UBI 9 Minimal. Each variant ships preinstalled Temurin JDK 25 GA, JDK 26 Early Access, or JDK 26 Valhalla Early Access for both `linux/amd64` and `linux/arm64`, with musl builds where supported. Images are non-root, digest pinned, SBOM-attested, and Cosign-signed.
 
+## CI Images vs. Production Images
+
+This repository produces two distinct types of images to balance development speed with production security:
+
+| Feature | CI Images (`ci-*`) | Production Images (Standard) |
+| :--- | :--- | :--- |
+| **Purpose** | Pull Request validation, local testing | Production deployments |
+| **Architecture** | `linux/amd64` only (fast build) | `linux/amd64` + `linux/arm64` |
+| **Content** | Includes debug tools (`curl`, `netcat`, `bind-tools`) | Minimal, hardened (no extra tools) |
+| **Security** | Scanned for CRITICAL CVEs only | Full scan, Signed, SBOM, Attested |
+| **Retention** | Ephemeral (can be deleted/overwritten) | Immutable, long-term retention |
+
+**⚠️ WARNING:** Never deploy `ci-` prefixed images to production. They contain unnecessary tools and lack the full security verification of production builds.
+
 ## Image Matrix
 
 | Tag | Base | libc | Contents |
@@ -57,6 +71,9 @@ make resolve TYPE=chainguard FLAVOR=jdk26ea
 
 # Build multi-arch manifest (Chainguard, JDK 26 EA)
 make build TYPE=chainguard FLAVOR=jdk26ea
+
+# Build fast single-arch CI image (includes debug tools)
+make build-ci TYPE=chainguard FLAVOR=jdk26ea
 
 # Generate SBOM & sign
 make sbom TYPE=chainguard FLAVOR=jdk26ea

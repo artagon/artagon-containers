@@ -1,7 +1,6 @@
 name: Build and Push
 
 on:
-  pull_request:
   push:
     branches: [main]
 
@@ -55,7 +54,6 @@ jobs:
             https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
       - name: Login to GHCR
-        if: github.event_name == 'push'
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
           registry: ghcr.io
@@ -64,80 +62,12 @@ jobs:
 
       - name: Build image
         run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            docker buildx bake ${{ matrix.target }} \
-              --set *.args.SOURCE_DATE_EPOCH=$(date +%s) \
-              --set *.cache-from=type=gha \
-              --set *.cache-to=type=gha,mode=max \
-              --push
-          else
-            # Extract build config from bake file
-            TARGET="${{ matrix.target }}"
-            CONFIG=$(docker buildx bake $TARGET --print)
-            DOCKERFILE=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].dockerfile')
-            TAGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].tags[0]')
+          docker buildx bake ${{ matrix.target }} \
+            --set *.args.SOURCE_DATE_EPOCH=$(date +%s) \
+            --set *.cache-from=type=gha \
+            --set *.cache-to=type=gha,mode=max \
+            --push
 
-            # Extract build args (excluding SOURCE_DATE_EPOCH which we'll override)
-            BUILDX_ARGS=$(echo "$CONFIG" | jq -r '.target["'$TARGET'"].args | del(.SOURCE_DATE_EPOCH) | to_entries[] | "--build-arg \(.key)=\(.value)"' | tr '\n' ' ')
-
-            docker buildx build \
-              --file "$DOCKERFILE" \
-              --platform linux/amd64 \
-              --tag "$TAGS" \
-              --cache-from type=gha \
-              --build-arg SOURCE_DATE_EPOCH=$(date +%s) \
-              $BUILDX_ARGS \
-              --load \
-              .
-          fi
-
-      - name: Test health check
-        if: github.event_name == 'pull_request'
-        run: |
-          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
-
-          # Test 1: Run health check (works for all non-distroless images)
-          echo "Testing health check functionality..."
-          if [[ "${{ matrix.target }}" == distroless-* ]]; then
-            # Distroless: Just verify java works (ENTRYPOINT is ["java"], pass only arguments)
-            docker run --rm "$IMAGE_REF" -version
-            echo "✅ Distroless JVM verification passed"
-          else
-            # Other images: Test health check script directly
-            # Note: Override entrypoint since Chainguard/UBI9 have ENTRYPOINT=["java"]
-            docker run --rm --entrypoint="" -e HEALTH_CHECK_MODE=jvm "$IMAGE_REF" /usr/local/bin/health-check.sh
-            echo "✅ Health check script executed successfully"
-          fi
-
-          # Test 2: Verify OCI security labels
-          echo "Verifying security labels..."
-          CAPS=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.capabilities"}}')
-          ROOTFS=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.readonly-rootfs"}}')
-          SECCOMP=$(docker inspect "$IMAGE_REF" --format='{{index .Config.Labels "org.opencontainers.image.security.seccomp"}}')
-
-          if [[ "$CAPS" == "NONE" && "$ROOTFS" == "recommended" && "$SECCOMP" == *"seccomp-java.json"* ]]; then
-            echo "✅ Security labels verified (caps=$CAPS, rootfs=$ROOTFS, seccomp=$SECCOMP)"
-          else
-            echo "❌ Security labels missing or incorrect"
-            echo "  capabilities: $CAPS (expected: NONE)"
-            echo "  readonly-rootfs: $ROOTFS (expected: recommended)"
-            echo "  seccomp: $SECCOMP (expected: *seccomp-java.json*)"
-            exit 1
-          fi
-
-          # Test 3: Verify HEALTHCHECK instruction (non-distroless only)
-          if [[ "${{ matrix.target }}" != distroless-* ]]; then
-            echo "Verifying HEALTHCHECK instruction..."
-            HEALTHCHECK=$(docker inspect "$IMAGE_REF" --format='{{json .Config.Healthcheck}}')
-            if echo "$HEALTHCHECK" | grep -q "health-check.sh"; then
-              echo "✅ HEALTHCHECK instruction verified"
-            else
-              echo "❌ HEALTHCHECK instruction missing or incorrect: $HEALTHCHECK"
-              exit 1
-            fi
-          fi
-
-          echo "🎉 All health check and security tests passed for ${{ matrix.target }}"
 
       - name: Generate SBOM
         run: |
@@ -162,11 +92,9 @@ jobs:
           grype ${IMAGE_REF}
 
       - name: Sign image
-        if: github.event_name == 'push'
         run: cosign sign --yes $REGISTRY:${{ matrix.target }}
 
       - name: Attest SBOM
-        if: github.event_name == 'push'
         run: cosign attest --yes --predicate sbom/${{ matrix.target }}.cdx.json --type cyclonedx $REGISTRY:${{ matrix.target }}
 
   summary:

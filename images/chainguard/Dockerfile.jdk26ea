@@ -39,6 +39,11 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=builder /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
 COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
+ARG BUILD_TARGET=production
+RUN if [ "$BUILD_TARGET" = "ci" ]; then \
+        apk add --no-cache curl netcat-openbsd bind-tools; \
+    fi
+
 RUN set -eux; \
     adduser -D -u 65532 runner 2>/dev/null || true; \
     ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default; \

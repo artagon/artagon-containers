@@ -30,6 +30,11 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=builder /opt/jdk ${JAVA_HOME}
 COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
+ARG BUILD_TARGET=production
+RUN if [ "$BUILD_TARGET" = "ci" ]; then \
+        microdnf install -y nc bind-utils && microdnf clean all; \
+    fi
+
 RUN microdnf install -y shadow-utils && microdnf clean all \
  && useradd --uid 65532 --shell /sbin/nologin runner \
  && ln -sf ${JAVA_HOME} /usr/lib/jvm/default \
