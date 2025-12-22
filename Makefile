@@ -63,7 +63,7 @@ attest: sbom
 
 lint:
 	hadolint images/chainguard/Dockerfile.* images/distroless/Dockerfile.* images/ubi9/Dockerfile.*
-	dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR)) || true
+	DOCKER_CONTENT_TRUST=1 dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
 
 versions:
 	./scripts/print_versions.sh

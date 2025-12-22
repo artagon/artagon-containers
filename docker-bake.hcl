@@ -39,6 +39,7 @@ group "default" {
 target "chainguard-jdk25" {
   inherits   = ["common"]
   dockerfile = "images/chainguard/Dockerfile.jdk25"
+  target     = "runtime-glibc"
   args = {
     FLAVOR = "jdk25"
     LIBC   = "glibc"
@@ -48,6 +49,7 @@ target "chainguard-jdk25" {
 
 target "chainguard-jdk25-musl" {
   inherits = ["chainguard-jdk25"]
+  target   = "runtime-musl"
   args = {
     LIBC = "musl"
   }
