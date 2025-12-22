@@ -49,7 +49,7 @@ jobs:
           echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
       - name: Build CI image
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v6
         env:
           REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         with:
