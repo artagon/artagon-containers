@@ -53,3 +53,24 @@ Add a step to the `health-check.sh` or a separate CI test to verify the timestam
 1.  **Refactor Dockerfiles:** Add the install/update commands to Chainguard and UBI9 Dockerfiles.
 2.  **Verify Distroless:** Confirm Dependabot is tracking the `gcr.io/distroless` digests correctly.
 3.  **Documentation:** Update `SECURITY.md` to mention this "freshness" guarantee.
+
+## Runtime Revocation Checking (CRLs & OCSP)
+
+While the build-time updates described above ensure the *Root Certificate Authority* store is current, verifying the status of individual intermediate or leaf certificates (revocation) happens at **runtime**.
+
+Users of these images should configure their Java applications to perform active revocation checking. The JDK supports standard protocols like CRL (Certificate Revocation Lists) and OCSP (Online Certificate Status Protocol).
+
+### 1. CRL Checking (Certificate Revocation Lists)
+To enable legacy CRL checking, where the JDK downloads the full list of revoked certificates from the Distribution Point (CRLDP) specified in the certificate:
+*   **System Property:** `-Dcom.sun.net.ssl.checkRevocation=true`
+*   **System Property:** `-Dcom.sun.security.enableCRLDP=true`
+
+### 2. OCSP Checking (Online Certificate Status Protocol)
+To enable real-time validation checks with the CA's OCSP responder:
+*   **Security Property:** `ocsp.enable=true` (Set in `java.security` file or via `Security.setProperty()`)
+*   **System Property:** `-Dcom.sun.security.enableAIAcaIssuers=true` (Ensures issuer certificates can be fetched via Authority Information Access extension if missing).
+
+### 3. OCSP Stapling (TLS Status Request)
+To reduce the latency of OCSP lookups, enable "Stapling", where the server presents its own valid signed OCSP response during the TLS handshake:
+*   **System Property:** `-Djdk.tls.client.enableStatusRequestExtension=true` (Available in Java 8u261+ and later).
+

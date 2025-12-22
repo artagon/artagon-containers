@@ -40,3 +40,31 @@ The build system will explicitly force an update of the `ca-certificates` packag
 
 *   **Build Logs:** Verify that the package manager output shows `ca-certificates` being checked/upgraded.
 *   **Runtime:** Inspecting the image should show the timestamp of `/etc/ssl/certs/ca-certificates.crt` (or equivalent) being recent.
+
+## Runtime Configuration Guide: Revocation Checking
+
+This specification primarily addresses the *static trust anchor* (Root CAs). However, a complete security posture requires checking for *revoked* certificates at runtime. The following configurations are recommended for applications running in these containers.
+
+### 1. Enabling CRL (Certificate Revocation Lists)
+
+CRLs are large lists of revoked serial numbers downloaded from the CA.
+*   **Method:** Set Java System Properties.
+*   **Key Properties:**
+    *   `com.sun.net.ssl.checkRevocation=true`: Master switch for revocation checking.
+    *   `com.sun.security.enableCRLDP=true`: Enables fetching CRLs from the "CRL Distribution Points" extension in the certificate.
+
+### 2. Enabling OCSP (Online Certificate Status Protocol)
+
+OCSP performs a lightweight, real-time status check for a specific certificate.
+*   **Method:** Set Java Security Property (preferred) or System Property.
+*   **Key Properties:**
+    *   `ocsp.enable=true`: **Security Property** (set in `java.security`). This is the standard way to enable OCSP.
+    *   `com.sun.security.enableAIAcaIssuers=true`: **System Property**. Vital for incomplete chains; allows fetching the issuer certificate via the "Authority Information Access" extension.
+
+### 3. Enabling OCSP Stapling
+
+Stapling improves performance and privacy by having the server provide the OCSP response.
+*   **Method:** Set Java System Property.
+*   **Key Property:**
+    *   `jdk.tls.client.enableStatusRequestExtension=true`: Enables the client to request the OCSP response in the TLS handshake.
+
