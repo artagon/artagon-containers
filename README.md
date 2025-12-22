@@ -89,14 +89,16 @@ UBI 9 builder packages:
 - `ca-certificates-2025.2.80_v9.0.305-91.el9`
 - `python3-3.9.25-2.el9_7`
 
-UBI 9 runtime packages (health-check and user setup):
-- `shadow-utils-2:4.9-15.el9`
-- `coreutils-8.32-39.el9`
+UBI 9 runtime tools come from the pinned base image digest (health checks and user setup rely on these):
+- `coreutils-single-8.32-39.el9`
+- `shadow-utils-4.9-12.el9`
 - `sed-4.8-9.el9`
 - `grep-3.6-5.el9`
 - `gawk-5.1.0-6.el9`
-- `nmap-ncat-3:7.92-3.el9` (CI debug tools)
-- `bind-utils-32:9.16.23-34.el9_7.1` (CI debug tools)
+
+UBI 9 CI debug tools (installed only for `BUILD_TARGET=ci`):
+- `nmap-ncat-3:7.92-3.el9`
+- `bind-utils-32:9.16.23-34.el9_7.1`
 
 ## Quick Usage
 

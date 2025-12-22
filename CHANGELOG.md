@@ -3,7 +3,7 @@
 ## [Unreleased]
 - Enforced linting with pinned package versions across Wolfi/Alpine/UBI images, removed `latest` tags from base references, and required content trust for Dockle.
 - Split Chainguard JDK25 builds into explicit glibc/musl stages and updated Bake targets for correct variant selection.
-- Added musl loader support in Distroless runtime images and ensured UBI health checks have required runtime utilities.
+- Added musl loader support in Distroless runtime images and aligned UBI health check dependencies with base-provided tools.
 - Expanded README with CI vs deployment differences, updated image matrix, build process/tooling, pinned dependency versions, and a FIPS 140-3 roadmap.
 - Added a consolidated security and supply-chain overview and linked it from policy docs and README.
 

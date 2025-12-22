@@ -42,14 +42,7 @@ RUN if [ "$BUILD_TARGET" = "ci" ]; then \
         microdnf install -y nmap-ncat-3:7.92-3.el9 bind-utils-32:9.16.23-34.el9_7.1 && microdnf clean all; \
     fi
 
-RUN microdnf install -y \
-    shadow-utils-2:4.9-15.el9 \
-    coreutils-8.32-39.el9 \
-    sed-4.8-9.el9 \
-    grep-3.6-5.el9 \
-    gawk-5.1.0-6.el9 \
-    && microdnf clean all \
- && useradd --uid 65532 --shell /sbin/nologin runner \
+RUN useradd --uid 65532 --shell /sbin/nologin runner \
  && ln -sf ${JAVA_HOME} /usr/lib/jvm/default \
  && chmod +x /usr/local/bin/health-check.sh
 
