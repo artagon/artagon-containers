@@ -1,5 +1,7 @@
 # Security Policy
 
+For a consolidated security overview, see `docs/security/overview.md`.
+
 ## Supported Images
 
 Tag | Supported
@@ -177,6 +179,13 @@ Our security hardening aligns with industry frameworks:
 - **HIPAA**: SBOM and provenance for audit trails
 - **PCI-DSS**: Vulnerability scanning and patching SLA
 - **FedRAMP**: SLSA Level 3 provenance, continuous monitoring
+
+## FIPS 140-3 Roadmap
+
+Planned work to support FIPS 140-3 aligned deployments:
+- Add UBI FIPS base variants for JVM images (FIPS-enabled crypto modules)
+- Validate JVM crypto providers in FIPS mode and document supported configurations
+- Provide deployment guidance and verification steps for FIPS-enabled runtimes
 
 ## Security Testing
 

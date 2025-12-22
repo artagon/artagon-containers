@@ -138,6 +138,28 @@ make sign TYPE=chainguard FLAVOR=jdk26ea
 Environment requirements: Docker 24+, Buildx/BuildKit, `jq`, `python3`, `curl`, `cosign`, `syft`, `trivy`, `grype`, `hadolint`, `dockle`.
 Linting note: `make lint` runs Dockle with `DOCKER_CONTENT_TRUST=1` to enforce signature verification.
 
+## Build Process and Tooling
+
+Build pipeline overview:
+1. Resolve JDK metadata and checksums (`scripts/resolve_jdk.sh`).
+2. Build OCI images with Buildx Bake using digest-pinned bases (`docker-bake.hcl`, `Makefile`).
+3. Generate SBOMs (CycloneDX) with Syft.
+4. Scan images with Trivy and Grype.
+5. Sign and attest images with Cosign (keyless, Rekor-backed).
+
+Tooling used:
+- Build: Docker Buildx/BuildKit, Bake (`docker-bake.hcl`)
+- JDK resolution: `curl`, `python3`, `scripts/resolve_jdk.sh`
+- SBOM: `syft`
+- Vulnerability scan: `trivy`, `grype`
+- Signing/attestation: `cosign`
+- Linting: `hadolint`, `dockle`
+
+References:
+- Consolidated security overview: `docs/security/overview.md`
+- Supply chain controls: `policy/SUPPLY-CHAIN.md`
+- Security policy and SLAs: `policy/SECURITY.md`
+
 ## CI/CD
 
 - `build-push.yml`: PR/main builds, SBOM, vulnerability gates, Cosign.
@@ -168,6 +190,31 @@ Linting note: `make lint` runs Dockle with `DOCKER_CONTENT_TRUST=1` to enforce s
 - **Regulatory**: HIPAA, PCI-DSS, FedRAMP ready (SBOM, provenance, audit trails)
 
 See [Security Policy](policy/SECURITY.md) for complete details.
+
+## Security Controls
+
+Runtime controls:
+- Non-root user, read-only rootfs support, and capability drop
+- Seccomp (`security/seccomp-java.json`) and AppArmor (`security/apparmor-java.txt`) profiles
+- Health checks for Chainguard and UBI variants
+
+Supply-chain controls:
+- Digest-pinned base images
+- SBOM generation (Syft, CycloneDX)
+- Image scanning (Trivy, Grype)
+- Cosign signing and SLSA provenance attestations
+
+References:
+- Consolidated security overview: `docs/security/overview.md`
+- Security policy, supported images, and compliance mapping: `policy/SECURITY.md`
+- Security profiles and hardening artifacts: `security/`
+
+## FIPS 140-3 Roadmap
+
+Future work toward FIPS 140-3 compliance:
+- Add UBI FIPS base variants (OpenJDK + approved crypto modules)
+- Validate JVM crypto providers against FIPS mode (OpenSSL, NSS, or BC FIPS as applicable)
+- Provide hardened runtime guidance and validation checklists for FIPS-enabled deployments
 
 ## Verification
 
