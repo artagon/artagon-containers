@@ -5,16 +5,23 @@ ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367eff
 
 FROM alpine:3.20@${ALPINE_DIGEST} AS musl-loader
 
-FROM cgr.dev/chainguard/wolfi-base:latest@${WOLFI_DIGEST} AS builder
+FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS builder
 
 ARG FLAVOR=jdk25
 ARG LIBC=glibc
 ARG TYPE=distroless
 ARG TARGETARCH
+SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 RUN set -eux; \
     for attempt in 1 2 3; do \
-      if apk add --no-cache curl coreutils bash python3 ca-certificates binutils; then \
+      if apk add --no-cache \
+        curl=8.17.0-r0 \
+        coreutils=9.9-r0 \
+        bash=5.3-r3 \
+        python-3.12=3.12.12-r3 \
+        ca-certificates=20251003-r0 \
+        binutils=2.45.1-r2; then \
         break; \
       fi; \
       if [ "$attempt" -eq 3 ]; then \
@@ -30,9 +37,12 @@ COPY --from=musl-loader /lib/ld-musl-*.so.1 /opt/musl/
 RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh /usr/local/bin/create_jre.sh
 
 RUN set -eux; \
-    apk_retry() { \
+    apk_add_glibc() { \
       for attempt in 1 2 3; do \
-        if apk add --no-cache "$@"; then \
+        if apk add --no-cache \
+          glibc=2.42-r3 \
+          glibc-locale-posix=2.42-r3 \
+          libgcc=15.2.0-r3; then \
           return 0; \
         fi; \
         if [ "$attempt" -eq 3 ]; then \
@@ -40,15 +50,16 @@ RUN set -eux; \
         fi; \
         sleep $((attempt * 2)); \
       done; \
+      return 1; \
     }; \
     eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
     if [ "${LIBC}" = "musl" ]; then \
       cp /opt/musl/ld-musl-*.so.1 /lib/; \
       if ! echo "${JDK_URL}" | grep -q "musl"; then \
-        apk_retry glibc glibc-locale-posix libgcc; \
+        apk_add_glibc; \
       fi; \
     else \
-      apk_retry glibc glibc-locale-posix libgcc; \
+      apk_add_glibc; \
     fi; \
     curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error "${JDK_URL}" -o /tmp/jdk.tar.gz; \
     verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
@@ -57,17 +68,20 @@ RUN set -eux; \
     rm -f /tmp/jdk.tar.gz; \
     /usr/local/bin/create_jre.sh /opt/jdk /opt/jre
 
-FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime-glibc
-FROM gcr.io/distroless/static-debian12@sha256:87bce11be0af225e4ca761c40babb06d6d559f5767fbf7dc3c47f0f1a466b92c AS runtime-musl
-
-ARG LIBC=glibc
-FROM runtime-${LIBC} AS runtime
+# Note: Distroless static-debian12 has no libc, cannot run JDK binaries
+# Use base-debian12 (glibc) for both variants
+FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jre-${FLAVOR}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=builder /opt/jre ${JAVA_HOME}
+COPY --from=builder /opt/musl/ld-musl-*.so.1 /lib/
+
+# Note: Distroless images do not support shell or package manager,
+# so we cannot add CI debugging tools here.
+ARG BUILD_TARGET=production
 
 USER 65532:65532
 WORKDIR /workspace
@@ -75,7 +89,14 @@ WORKDIR /workspace
 LABEL org.opencontainers.image.title="artagon-distroless-${FLAVOR}" \
       org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
       org.opencontainers.image.sbom="https://github.com/artagon/artagon-containers/releases/latest/download/distroless-${FLAVOR}.cdx.json" \
-      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception"
+      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json" \
+      org.opencontainers.image.description="Distroless images use exec-form JVM health checks (no shell available)"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["java", "-XshowSettings:properties", "-version"]
 
 ENTRYPOINT ["java"]
 CMD ["--version"]

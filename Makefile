@@ -20,7 +20,7 @@ define image_tag
 $($(strip IMAGE_TAG_$(1)_$(2)))
 endef
 
-.PHONY: all resolve build push sbom scan sign attest lint versions clean
+.PHONY: all resolve build build-ci push sbom scan sign attest lint versions clean
 
 all: build
 
@@ -31,6 +31,10 @@ resolve:
 
 build:
 	docker buildx bake $(call image_tag,$(TYPE),$(FLAVOR)) --set *.args.SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH)
+
+build-ci:
+	docker buildx bake ci-$(call image_tag,$(TYPE),$(FLAVOR)) --set *.args.SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) --set *.args.BUILD_TARGET=ci
+
 
 push:
 	docker buildx bake $(call image_tag,$(TYPE),$(FLAVOR)) --set *.args.SOURCE_DATE_EPOCH=$(SOURCE_DATE_EPOCH) --push
@@ -59,7 +63,7 @@ attest: sbom
 
 lint:
 	hadolint images/chainguard/Dockerfile.* images/distroless/Dockerfile.* images/ubi9/Dockerfile.*
-	dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR)) || true
+	DOCKER_CONTENT_TRUST=1 dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
 
 versions:
 	./scripts/print_versions.sh

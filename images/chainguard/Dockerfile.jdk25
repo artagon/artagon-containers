@@ -1,13 +1,20 @@
 # syntax=docker/dockerfile:1.7
-ARG BASE_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
-FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST} AS builder
+ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d"
+
+FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS builder-glibc
 
 ARG FLAVOR=jdk25
-ARG LIBC=musl
+ARG LIBC=glibc
 ARG TYPE=chainguard
 ARG TARGETARCH
 
-RUN apk add --no-cache curl coreutils bash python3 ca-certificates
+RUN apk add --no-cache \
+    curl=8.17.0-r0 \
+    coreutils=9.9-r0 \
+    bash=5.3-r3 \
+    python-3.12=3.12.12-r3 \
+    ca-certificates=20251003-r0
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
@@ -21,16 +28,53 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
     rm -f /tmp/jdk.tar.gz
 
-FROM cgr.dev/chainguard/wolfi-base:latest@${BASE_DIGEST}
+FROM alpine:3.20@${ALPINE_DIGEST} AS builder-musl
+
+ARG FLAVOR=jdk25
+ARG LIBC=musl
+ARG TYPE=chainguard
+ARG TARGETARCH
+
+RUN apk add --no-cache \
+    curl=8.14.1-r2 \
+    coreutils=9.5-r2 \
+    bash=5.2.26-r0 \
+    python3=3.12.12-r0 \
+    ca-certificates=20250911-r0
+
+COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
+COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
+RUN chmod +x /usr/local/bin/resolve_jdk.sh /usr/local/bin/verify_sha256.sh
+
+RUN set -eux; \
+    eval "$(resolve_jdk.sh --flavor=${FLAVOR} --arch=${TARGETARCH} --libc=${LIBC} --type=${TYPE})"; \
+    curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error "${JDK_URL}" -o /tmp/jdk.tar.gz; \
+    verify_sha256.sh /tmp/jdk.tar.gz "${JDK_SHA256}"; \
+    mkdir -p /opt/jdk; \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
+    rm -f /tmp/jdk.tar.gz
+
+FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS runtime-glibc
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-COPY --from=builder /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
+COPY --from=builder-glibc /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
+COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
-RUN adduser -D -u 65532 runner 2>/dev/null || true \
- && ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default
+ARG BUILD_TARGET=production
+RUN if [ "$BUILD_TARGET" = "ci" ]; then \
+        apk add --no-cache \
+          curl=8.17.0-r0 \
+          netcat-openbsd=1.234-r0 \
+          bind-tools=9.20.17-r0; \
+    fi
+
+RUN set -eux; \
+    adduser -D -u 65532 runner 2>/dev/null || true; \
+    ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default; \
+    chmod +x /usr/local/bin/health-check.sh
 
 WORKDIR /workspace
 USER 65532:65532
@@ -39,7 +83,53 @@ LABEL org.opencontainers.image.title="artagon-chainguard-${FLAVOR}" \
       org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
       org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
       org.opencontainers.image.vendor="Artagon" \
-      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}"
+      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/local/bin/health-check.sh"]
+
+ENTRYPOINT ["java"]
+CMD ["--version"]
+
+FROM alpine:3.20@${ALPINE_DIGEST} AS runtime-musl
+
+ARG FLAVOR=jdk25
+ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+COPY --from=builder-musl /opt/jdk /usr/lib/jvm/jdk-${FLAVOR}
+COPY scripts/health-check.sh /usr/local/bin/health-check.sh
+
+ARG BUILD_TARGET=production
+RUN if [ "$BUILD_TARGET" = "ci" ]; then \
+        apk add --no-cache \
+          curl=8.14.1-r2 \
+          netcat-openbsd=1.226-r0 \
+          bind-tools=9.18.41-r0; \
+    fi
+
+RUN set -eux; \
+    adduser -D -u 65532 runner 2>/dev/null || true; \
+    ln -sf /usr/lib/jvm/jdk-${FLAVOR} /usr/lib/jvm/default; \
+    chmod +x /usr/local/bin/health-check.sh
+
+WORKDIR /workspace
+USER 65532:65532
+
+LABEL org.opencontainers.image.title="artagon-chainguard-${FLAVOR}" \
+      org.opencontainers.image.source="https://github.com/artagon/artagon-containers" \
+      org.opencontainers.image.licenses="GPL-2.0-with-classpath-exception" \
+      org.opencontainers.image.vendor="Artagon" \
+      org.opencontainers.image.description="Chainguard Wolfi base with Temurin ${FLAVOR}" \
+      org.opencontainers.image.security.capabilities="NONE" \
+      org.opencontainers.image.security.readonly-rootfs="recommended" \
+      org.opencontainers.image.security.seccomp="security/seccomp-java.json"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["/usr/local/bin/health-check.sh"]
 
 ENTRYPOINT ["java"]
 CMD ["--version"]

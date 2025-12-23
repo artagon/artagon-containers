@@ -2,25 +2,43 @@
 
 Hardened OCI images for JVM workloads on Chainguard (Wolfi), Google Distroless, and Red Hat UBI 9 Minimal. Each variant ships preinstalled Temurin JDK 25 GA, JDK 26 Early Access, or JDK 26 Valhalla Early Access for both `linux/amd64` and `linux/arm64`, with musl builds where supported. Images are non-root, digest pinned, SBOM-attested, and Cosign-signed.
 
+## CI Images vs. Deployment Images
+
+This repository produces two distinct types of images to balance development speed with production security:
+
+| Feature | CI Images (`ci-*`) | Deployment Images (Production) |
+| :--- | :--- | :--- |
+| **Purpose** | Pull Request validation, local testing | Production deployments |
+| **Architecture** | `linux/amd64` only (fast build) | `linux/amd64` + `linux/arm64` |
+| **Content** | Debug tools for Chainguard/UBI (`curl`, `netcat`, `bind-tools`); Distroless CI tags are identical to prod | Minimal, hardened (no extra tools) |
+| **Security** | Scanned for CRITICAL CVEs only; not signed/attested | Full scan, Signed, SBOM, Attested |
+| **Retention** | Ephemeral (can be deleted/overwritten) | Immutable, long-term retention |
+
+**⚠️ WARNING:** Never deploy `ci-` prefixed images to production. They lack the full security verification of production builds and may include extra tools (Chainguard/UBI).
+
 ## Image Matrix
 
-| Tag | Base | libc | Contents |
+| Tag | Base | libc | Notes |
 | --- | --- | --- | --- |
-| `chainguard-jdk25` | `cgr.dev/chainguard/wolfi-base` | musl | Full JDK 25 GA |
-| `chainguard-jdk25-musl` | same | musl | Musl toolchain (alias) |
-| `chainguard-jdk26ea` | same | musl | JDK 26 EA |
-| `chainguard-jdk26ea-musl` | same | musl | JDK 26 EA (alt tag) |
-| `chainguard-jdk26valhalla` | same | musl | Valhalla EA |
-| `chainguard-jdk26valhalla-musl` | same | musl | Valhalla EA (alt tag) |
+| `chainguard-jdk25` | `cgr.dev/chainguard/wolfi-base` | glibc | Full JDK 25 GA |
+| `chainguard-jdk25-musl` | `alpine:3.20` | musl | Musl toolchain |
+| `chainguard-jdk26ea` | `cgr.dev/chainguard/wolfi-base` | glibc | JDK 26 EA |
+| `chainguard-jdk26ea-musl` | `cgr.dev/chainguard/wolfi-base` | glibc | Musl tag alias (no musl binaries) |
+| `chainguard-jdk26valhalla` | `cgr.dev/chainguard/wolfi-base` | glibc | Valhalla EA |
+| `chainguard-jdk26valhalla-musl` | `cgr.dev/chainguard/wolfi-base` | glibc | Musl tag alias (no musl binaries) |
 | `distroless-jre25` | `gcr.io/distroless/base-debian12` | glibc | jlink JRE 25 |
-| `distroless-jre25-musl` | `gcr.io/distroless/static-debian12` | musl | static jlink JRE 25 |
+| `distroless-jre25-musl` | `gcr.io/distroless/base-debian12` | glibc | jlink JRE 25 + musl loader |
 | `distroless-jre26ea` | `gcr.io/distroless/base-debian12` | glibc | jlink JRE 26 EA |
-| `distroless-jre26ea-musl` | `gcr.io/distroless/static-debian12` | musl | static jlink JRE 26 EA |
+| `distroless-jre26ea-musl` | `gcr.io/distroless/base-debian12` | glibc | Musl tag alias + musl loader |
 | `distroless-jre26valhalla` | `gcr.io/distroless/base-debian12` | glibc | jlink Valhalla EA |
-| `distroless-jre26valhalla-musl` | `gcr.io/distroless/static-debian12` | musl | static Valhalla EA |
+| `distroless-jre26valhalla-musl` | `gcr.io/distroless/base-debian12` | glibc | Musl tag alias + musl loader |
 | `ubi9-jdk25` | `registry.access.redhat.com/ubi9-minimal` | glibc | Full JDK 25 GA |
-| `ubi9-jdk26ea` | same | glibc | JDK 26 EA |
-| `ubi9-jdk26valhalla` | same | glibc | Valhalla EA |
+| `ubi9-jdk26ea` | `registry.access.redhat.com/ubi9-minimal` | glibc | JDK 26 EA |
+| `ubi9-jdk26valhalla` | `registry.access.redhat.com/ubi9-minimal` | glibc | Valhalla EA |
+
+Notes:
+- Base images are digest-pinned in the Dockerfiles.
+- Distroless images use `base-debian12` for all tags; musl tags include the musl loader for musl-built JREs.
 
 Common properties:
 - Non-root (`uid=65532`, `gid=65532`)
@@ -29,6 +47,58 @@ Common properties:
 - Drops Linux capabilities & sets `no-new-privileges`
 - `JAVA_HOME` and `PATH` exported
 - OCI labels (`org.opencontainers.image.*`) including SBOM pointer and licenses
+
+## Build Dependency Versions
+
+Build dependencies are pinned in Dockerfiles to keep builds reproducible and satisfy linting. Update these when base digests change.
+
+Base images (digest-pinned):
+- `cgr.dev/chainguard/wolfi-base@sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf`
+- `alpine:3.20@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d`
+- `gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8`
+- `registry.access.redhat.com/ubi9/ubi@sha256:dec374e05cc13ebbc0975c9f521f3db6942d27f8ccdf06b180160490eef8bdbc`
+- `registry.access.redhat.com/ubi9-minimal@sha256:34880b64c07f28f64d95737f82f891516de9a3b43583f39970f7bf8e4cfa48b7`
+
+Wolfi (glibc) packages used by Chainguard glibc images and Distroless builders:
+- `curl=8.17.0-r0`
+- `coreutils=9.9-r0`
+- `bash=5.3-r3`
+- `python-3.12=3.12.12-r3`
+- `ca-certificates=20251003-r0`
+- `binutils=2.45.1-r2` (Distroless builder)
+- `glibc=2.42-r3` (Distroless builder)
+- `glibc-locale-posix=2.42-r3` (Distroless builder)
+- `libgcc=15.2.0-r3` (Distroless builder)
+- `netcat-openbsd=1.234-r0` (CI debug tools)
+- `bind-tools=9.20.17-r0` (CI debug tools)
+
+Alpine 3.20 (musl) packages used by Chainguard JDK25 musl images:
+- `curl=8.14.1-r2`
+- `coreutils=9.5-r2`
+- `bash=5.2.26-r0`
+- `python3=3.12.12-r0`
+- `ca-certificates=20250911-r0`
+- `netcat-openbsd=1.226-r0` (CI debug tools)
+- `bind-tools=9.18.41-r0` (CI debug tools)
+
+UBI 9 builder packages:
+- `curl-7.76.1-34.el9`
+- `tar-2:1.34-7.el9`
+- `coreutils-8.32-39.el9`
+- `gzip-1.12-1.el9`
+- `ca-certificates-2025.2.80_v9.0.305-91.el9`
+- `python3-3.9.25-2.el9_7`
+
+UBI 9 runtime tools come from the pinned base image digest (health checks and user setup rely on these):
+- `coreutils-single-8.32-39.el9`
+- `shadow-utils-4.9-15.el9`
+- `sed-4.8-9.el9`
+- `grep-3.6-5.el9`
+- `gawk-5.1.0-6.el9`
+
+UBI 9 CI debug tools (installed only for `BUILD_TARGET=ci`):
+- `nmap-ncat-3:7.92-3.el9`
+- `bind-utils-32:9.16.23-34.el9_7.1`
 
 ## Quick Usage
 
@@ -58,6 +128,9 @@ make resolve TYPE=chainguard FLAVOR=jdk26ea
 # Build multi-arch manifest (Chainguard, JDK 26 EA)
 make build TYPE=chainguard FLAVOR=jdk26ea
 
+# Build fast single-arch CI image (includes debug tools)
+make build-ci TYPE=chainguard FLAVOR=jdk26ea
+
 # Generate SBOM & sign
 make sbom TYPE=chainguard FLAVOR=jdk26ea
 make scan TYPE=chainguard FLAVOR=jdk26ea
@@ -65,6 +138,29 @@ make sign TYPE=chainguard FLAVOR=jdk26ea
 ```
 
 Environment requirements: Docker 24+, Buildx/BuildKit, `jq`, `python3`, `curl`, `cosign`, `syft`, `trivy`, `grype`, `hadolint`, `dockle`.
+Linting note: `make lint` runs Dockle with `DOCKER_CONTENT_TRUST=1` to enforce signature verification.
+
+## Build Process and Tooling
+
+Build pipeline overview:
+1. Resolve JDK metadata and checksums (`scripts/resolve_jdk.sh`).
+2. Build OCI images with Buildx Bake using digest-pinned bases (`docker-bake.hcl`, `Makefile`).
+3. Generate SBOMs (CycloneDX) with Syft.
+4. Scan images with Trivy and Grype.
+5. Sign and attest images with Cosign (keyless, Rekor-backed).
+
+Tooling used:
+- Build: Docker Buildx/BuildKit, Bake (`docker-bake.hcl`)
+- JDK resolution: `curl`, `python3`, `scripts/resolve_jdk.sh`
+- SBOM: `syft`
+- Vulnerability scan: `trivy`, `grype`
+- Signing/attestation: `cosign`
+- Linting: `hadolint`, `dockle`
+
+References:
+- Consolidated security overview: `docs/security/overview.md`
+- Supply chain controls: `policy/SUPPLY-CHAIN.md`
+- Security policy and SLAs: `policy/SECURITY.md`
 
 ## CI/CD
 
@@ -74,16 +170,63 @@ Environment requirements: Docker 24+, Buildx/BuildKit, `jq`, `python3`, `curl`, 
 
 ## Security Posture
 
-- Digest-pinned bases (see Dockerfiles)
-- Syft CycloneDX SBOMs embedded via `org.opencontainers.image.sbom`
-- Cosign keyless signatures + SLSA provenance attestation
-- Trivy/Grype gating (HIGH/CRITICAL fail builds)
-- Supply-chain policy in `policy/`
-- Non-root, no capabilities, optional read-only rootfs
+### Runtime Hardening
+- **Non-root user**: UID 65532 (`nobody` convention)
+- **No capabilities**: Images require zero Linux capabilities
+- **Read-only rootfs**: Fully supports `--read-only` with tmpfs mounts
+- **Health checks**: HEALTHCHECK instructions for orchestration
+- **Seccomp profile**: `security/seccomp-java.json` restricts syscalls to Java essentials
+- **AppArmor profile**: `security/apparmor-java.txt` restricts filesystem access
+
+### Supply Chain Security
+- **Digest-pinned bases**: All base images pinned by SHA256
+- **SBOM attestations**: CycloneDX format generated by Syft
+- **Cosign signatures**: Keyless signing with Rekor transparency log
+- **SLSA provenance**: Level 3 provenance with GitHub Actions attestation
+- **In-toto attestations**: JDK resolution, SBOM metadata, scan summaries
+- **Vulnerability scanning**: Trivy/Grype with HIGH/CRITICAL gates
+- **CVE response SLA**: 24h acknowledgment, 72h patch for CRITICAL CVEs
+
+### Compliance
+- **CIS Docker Benchmark**: Level 1 compliance (4.1, 5.3, 5.12, 5.21, 5.25)
+- **NIST SP 800-190**: Container security guidelines
+- **Regulatory**: HIPAA, PCI-DSS, FedRAMP ready (SBOM, provenance, audit trails)
+
+See [Security Policy](policy/SECURITY.md) for complete details.
+
+## Security Controls
+
+Runtime controls:
+- Non-root user, read-only rootfs support, and capability drop
+- Seccomp (`security/seccomp-java.json`) and AppArmor (`security/apparmor-java.txt`) profiles
+- Health checks for all images (Distroless uses exec-form JVM check)
+
+Supply-chain controls:
+- Digest-pinned base images
+- SBOM generation (Syft, CycloneDX)
+- Image scanning (Trivy, Grype)
+- Cosign signing and SLSA provenance attestations
+
+References:
+- Consolidated security overview: `docs/security/overview.md`
+- Deployment guidance: `docs/security/deployment.md`
+- AppArmor usage: `docs/security/apparmor.md`
+- UBI9 minimization review: `docs/security/ubi9-minimization.md`
+- Security policy, supported images, and compliance mapping: `policy/SECURITY.md`
+- Security profiles and hardening artifacts: `security/`
+
+## FIPS 140-3 Roadmap
+
+Future work toward FIPS 140-3 compliance:
+- Add UBI FIPS base variants (OpenJDK + approved crypto modules)
+- Validate JVM crypto providers against FIPS mode (OpenSSL, NSS, or BC FIPS as applicable)
+- Provide hardened runtime guidance and validation checklists for FIPS-enabled deployments
 
 ## Verification
 
 ```bash
+scripts/verify_supply_chain.sh ghcr.io/artagon/artagon-containers:chainguard-jdk26ea
+
 COSIGN_EXPERIMENTAL=1 cosign verify \
   ghcr.io/artagon/artagon-containers:chainguard-jdk26ea
 

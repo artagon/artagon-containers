@@ -1,0 +1,79 @@
+name: CI Build
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-ci:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - ci-chainguard-jdk25
+          - ci-chainguard-jdk25-musl
+          - ci-chainguard-jdk26ea
+          - ci-chainguard-jdk26ea-musl
+          - ci-chainguard-jdk26valhalla
+          - ci-chainguard-jdk26valhalla-musl
+          - ci-distroless-jre25
+          - ci-distroless-jre25-musl
+          - ci-distroless-jre26ea
+          - ci-distroless-jre26ea-musl
+          - ci-distroless-jre26valhalla
+          - ci-distroless-jre26valhalla-musl
+          - ci-ubi9-jdk25
+          - ci-ubi9-jdk26ea
+          - ci-ubi9-jdk26valhalla
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lowercase Image Name
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
+      - name: Build CI image
+        uses: docker/bake-action@v6
+        env:
+          REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        with:
+          targets: ${{ matrix.target }}
+          set: |
+            *.cache-from=type=gha,scope=${{ matrix.target }}
+            *.cache-to=type=gha,mode=max,scope=${{ matrix.target }}
+          push: false
+          load: true
+
+      - name: Install AppArmor tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apparmor-utils
+
+      - name: Validate hardening
+        run: ./scripts/validate_hardening.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.target }}
+
+      - name: Run Trivy vulnerability scanner (Critical only)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.target }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'

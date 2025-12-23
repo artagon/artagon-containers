@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased]
+- Enforced linting with pinned package versions across Wolfi/Alpine/UBI images, removed `latest` tags from base references, and required content trust for Dockle.
+- Updated UBI9 minimal base digest to the latest release (libxml2 2.9.13-14.el9_7) to address CVE-2025-12863 scan failures.
+- Split Chainguard JDK25 builds into explicit glibc/musl stages and updated Bake targets for correct variant selection.
+- Added musl loader support in Distroless runtime images and aligned UBI health check dependencies with base-provided tools.
+- Added Distroless HEALTHCHECKs and updated the health-check fallback to `java -XshowSettings:properties -version`.
+- Added hardening validation automation (read-only rootfs, seccomp, AppArmor) in CI and build-push workflows.
+- Added SLSA Level 3 provenance via `slsa-github-generator` plus in-toto attestations for JDK resolution, SBOM metadata, and scan summaries, along with verification tooling.
+- Added security deployment/AppArmor guidance and a UBI9 minimization review with package inventory.
+- Expanded README with CI vs deployment differences, updated image matrix, build process/tooling, pinned dependency versions, and a FIPS 140-3 roadmap.
+- Added a consolidated security and supply-chain overview and linked it from policy docs and README.
+
 ## [0.1.0] - 2025-01-04
 - Initial publication of Chainguard, Distroless, and UBI images with Temurin JDK 25 GA, JDK 26 EA, and JDK 26 Valhalla
 - Added multi-arch Buildx bake, SBOM generation, Cosign signing, and vulnerability scanning pipelines
