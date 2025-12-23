@@ -3,8 +3,11 @@
 profile artagon-java flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
 
-  # JDK installation (read-only)
-  /usr/lib/jvm/** r,
+  # JDK installation (read and execute)
+  /usr/lib/jvm/** rix,
+
+  # Musl libc support
+  /lib/ld-musl-*.so.1 rix,
 
   # Application workspace (read-only by default)
   /workspace/** r,

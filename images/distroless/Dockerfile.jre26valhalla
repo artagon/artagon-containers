@@ -21,7 +21,8 @@ RUN set -eux; \
         bash=5.3-r3 \
         python-3.12=3.12.12-r3 \
         ca-certificates=20251003-r0 \
-        binutils=2.45.1-r2; then \
+        binutils=2.45.1-r2 \
+        zlib=1.3.1-r2; then \
         break; \
       fi; \
       if [ "$attempt" -eq 3 ]; then \
@@ -78,6 +79,7 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=builder /opt/jre ${JAVA_HOME}
 COPY --from=builder /opt/musl/ld-musl-*.so.1 /lib/
+COPY --from=builder /usr/lib/libz.so.1* /usr/lib/
 
 # Note: Distroless images do not support shell or package manager,
 # so we cannot add CI debugging tools here.
