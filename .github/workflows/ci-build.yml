@@ -60,6 +60,14 @@ jobs:
           push: false
           load: true
 
+      - name: Install AppArmor tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apparmor-utils
+
+      - name: Validate hardening
+        run: ./scripts/validate_hardening.sh ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.target }}
+
       - name: Run Trivy vulnerability scanner (Critical only)
         uses: aquasecurity/trivy-action@master
         with:

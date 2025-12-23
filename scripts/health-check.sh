@@ -109,8 +109,8 @@ jvm_execution_check() {
     fi
   fi
 
-  # Final fallback: Basic version check
-  timeout 2s java -version >/dev/null 2>&1
+  # Final fallback: Version and settings check
+  timeout 2s java -XshowSettings:properties -version >/dev/null 2>&1
   return $?
 }
 

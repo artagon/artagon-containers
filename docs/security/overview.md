@@ -37,7 +37,7 @@ Default runtime security posture:
 - Non-root user (UID/GID 65532)
 - Read-only rootfs supported with tmpfs mounts
 - No Linux capabilities required
-- Health checks (Chainguard and UBI variants)
+- Health checks (all images; Distroless uses exec-form JVM check)
 
 Security profiles:
 - Seccomp profile: `security/seccomp-java.json`
@@ -58,6 +58,17 @@ sudo apparmor_parser -r security/apparmor-java.txt
 docker run --security-opt apparmor=artagon-java <image>
 ```
 
+## Deployment Guidance
+
+For hardened runtime examples (Docker, Kubernetes), see `docs/security/deployment.md`.
+
+## OCI Security Labels
+
+Images include security metadata labels:
+- `org.opencontainers.image.security.capabilities`: expected to be `NONE`
+- `org.opencontainers.image.security.readonly-rootfs`: guidance for read-only rootfs
+- `org.opencontainers.image.security.seccomp`: reference to `security/seccomp-java.json`
+
 ## Supply Chain and Provenance Controls
 
 | Control | Description |
@@ -67,12 +78,15 @@ docker run --security-opt apparmor=artagon-java <image>
 | Integrity | `scripts/verify_sha256.sh` enforces checksum matches before extraction. |
 | SBOM | Syft CycloneDX SBOMs are generated and embedded via OCI labels. |
 | Signing | Cosign keyless signatures and SLSA provenance attestations are published for each tag. |
+| In-Toto Attestations | JDK resolution, SBOM metadata, and vulnerability scan metadata are attached via Cosign. |
 | Scanning | Trivy and Grype scans block HIGH/CRITICAL vulnerabilities pre-publish; nightly re-scans monitor drift. |
 | Dependency Updates | Dependabot monitors Docker base digests for updates. |
 
 ## Verification
 
 ```bash
+scripts/verify_supply_chain.sh ghcr.io/artagon/artagon-containers:chainguard-jdk25
+
 COSIGN_EXPERIMENTAL=1 cosign verify \
   ghcr.io/artagon/artagon-containers:chainguard-jdk25
 
@@ -109,7 +123,7 @@ grype ghcr.io/artagon/artagon-containers:chainguard-jdk25
 
 - Vulnerability scanning: Trivy and Grype with HIGH/CRITICAL gates
 - SBOM generation: CycloneDX format with package inventory
-- Runtime testing: read-only rootfs and security profile validation
+- Runtime testing: read-only rootfs and security profile validation (`scripts/validate_hardening.sh`)
 - Nightly scans: continuous monitoring for new CVEs
 
 ## References
@@ -117,5 +131,9 @@ grype ghcr.io/artagon/artagon-containers:chainguard-jdk25
 - Security policy and SLAs: `policy/SECURITY.md`
 - Supply-chain controls: `policy/SUPPLY-CHAIN.md`
 - Seccomp profile usage: `docs/security/seccomp.md`
+- AppArmor profile usage: `docs/security/apparmor.md`
+- Deployment guidance: `docs/security/deployment.md`
+- UBI9 minimization review: `docs/security/ubi9-minimization.md`
+- UBI9 package inventory: `docs/security/ubi9-packages.txt`
 - Seccomp profile: `security/seccomp-java.json`
 - AppArmor profile: `security/apparmor-java.txt`

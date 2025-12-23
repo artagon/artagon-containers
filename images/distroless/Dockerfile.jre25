@@ -93,7 +93,10 @@ LABEL org.opencontainers.image.title="artagon-distroless-${FLAVOR}" \
       org.opencontainers.image.security.capabilities="NONE" \
       org.opencontainers.image.security.readonly-rootfs="recommended" \
       org.opencontainers.image.security.seccomp="security/seccomp-java.json" \
-      org.opencontainers.image.description="Distroless images require health checks at orchestration level (no shell available)"
+      org.opencontainers.image.description="Distroless images use exec-form JVM health checks (no shell available)"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD ["java", "-XshowSettings:properties", "-version"]
 
 ENTRYPOINT ["java"]
 CMD ["--version"]

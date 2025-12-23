@@ -53,6 +53,11 @@ jobs:
           curl --fail --location --proto '=https' --tlsv1.3 --retry 3 --retry-delay 2 --silent --show-error \
             https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
+      - name: Install AppArmor tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apparmor-utils
+
       - name: Login to GHCR
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
@@ -68,12 +73,46 @@ jobs:
             --set *.cache-to=type=gha,mode=max \
             --push
 
+      - name: Validate hardening
+        run: ./scripts/validate_hardening.sh $REGISTRY:${{ matrix.target }}
+
+      - name: Prepare attestation workspace
+        run: mkdir -p attestations sbom
+
+      - name: Attest JDK resolution
+        run: |
+          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
+          ./scripts/attest_jdk_resolution.sh ${{ matrix.target }} attestations/jdk-resolution-${{ matrix.target }}.json
+          cosign attest --yes \
+            --predicate attestations/jdk-resolution-${{ matrix.target }}.json \
+            --type https://artagon.dev/attestations/jdk-resolution/v1 \
+            ${IMAGE_REF}
 
       - name: Generate SBOM
         run: |
-          mkdir -p sbom
           IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
           syft ${IMAGE_REF} -o cyclonedx-json > sbom/${{ matrix.target }}.cdx.json
+
+      - name: Attest SBOM metadata
+        run: |
+          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
+          SBOM_FILE="sbom/${{ matrix.target }}.cdx.json"
+          SBOM_SHA="$(sha256sum "${SBOM_FILE}" | awk '{print $1}')"
+          SYFT_VERSION="$(syft version | head -n 1 | sed 's/^Version: //')"
+          GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          cat > attestations/sbom-metadata-${{ matrix.target }}.json <<EOF
+          {
+            "target": "${{ matrix.target }}",
+            "format": "cyclonedx-json",
+            "syft_version": "${SYFT_VERSION}",
+            "sbom_sha256": "${SBOM_SHA}",
+            "generated_at": "${GENERATED_AT}"
+          }
+          EOF
+          cosign attest --yes \
+            --predicate attestations/sbom-metadata-${{ matrix.target }}.json \
+            --type https://artagon.dev/attestations/sbom-metadata/v1 \
+            ${IMAGE_REF}
 
       - name: Upload SBOM
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
@@ -82,14 +121,90 @@ jobs:
           path: sbom/${{ matrix.target }}.cdx.json
 
       - name: Scan (Trivy)
+        id: trivy
         run: |
           IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
-          trivy image --exit-code 1 --severity HIGH,CRITICAL ${IMAGE_REF}
+          set +e
+          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            --format json --output attestations/trivy-${{ matrix.target }}.json \
+            ${IMAGE_REF}
+          echo "trivy_exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
 
       - name: Scan (Grype)
+        id: grype
         run: |
           IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
-          grype ${IMAGE_REF}
+          set +e
+          grype ${IMAGE_REF} -o json --fail-on high > attestations/grype-${{ matrix.target }}.json
+          echo "grype_exit=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Attest vulnerability scan metadata
+        run: |
+          TRIVY_VERSION="$(trivy --version | head -n 1 | sed 's/^Version: //')"
+          GRYPE_VERSION="$(grype version | head -n 1 | sed 's/^Version: //')"
+          TARGET="${{ matrix.target }}"
+          TRIVY_EXIT="${{ steps.trivy.outputs.trivy_exit }}"
+          GRYPE_EXIT="${{ steps.grype.outputs.grype_exit }}"
+          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
+          python3 <<'PY'
+import json
+import os
+from datetime import datetime, timezone
+
+target = os.environ["TARGET"]
+trivy_path = f"attestations/trivy-{target}.json"
+grype_path = f"attestations/grype-{target}.json"
+
+def count_trivy(data):
+    counts = {}
+    for result in data.get("Results", []):
+        for vuln in result.get("Vulnerabilities") or []:
+            sev = vuln.get("Severity", "UNKNOWN")
+            counts[sev] = counts.get(sev, 0) + 1
+    return counts
+
+def count_grype(data):
+    counts = {}
+    for match in data.get("matches", []):
+        sev = match.get("vulnerability", {}).get("severity", "Unknown")
+        counts[sev] = counts.get(sev, 0) + 1
+    return counts
+
+with open(trivy_path, "r", encoding="utf-8") as fh:
+    trivy_data = json.load(fh)
+with open(grype_path, "r", encoding="utf-8") as fh:
+    grype_data = json.load(fh)
+
+payload = {
+    "target": target,
+    "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "trivy": {
+        "version": os.environ["TRIVY_VERSION"],
+        "exit_code": int(os.environ["TRIVY_EXIT"]),
+        "counts": count_trivy(trivy_data),
+    },
+    "grype": {
+        "version": os.environ["GRYPE_VERSION"],
+        "exit_code": int(os.environ["GRYPE_EXIT"]),
+        "counts": count_grype(grype_data),
+    },
+}
+
+with open(f"attestations/scan-{target}.json", "w", encoding="utf-8") as fh:
+    json.dump(payload, fh, indent=2)
+PY
+          cosign attest --yes \
+            --predicate attestations/scan-${{ matrix.target }}.json \
+            --type https://artagon.dev/attestations/vulnerability-scan/v1 \
+            ${IMAGE_REF}
+
+      - name: Upload attestation artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: attestations-${{ matrix.target }}
+          path: attestations/*${{ matrix.target }}*.json
 
       - name: Sign image
         run: cosign sign --yes $REGISTRY:${{ matrix.target }}
@@ -97,8 +212,130 @@ jobs:
       - name: Attest SBOM
         run: cosign attest --yes --predicate sbom/${{ matrix.target }}.cdx.json --type cyclonedx $REGISTRY:${{ matrix.target }}
 
-  summary:
+      - name: Enforce scan gates
+        run: |
+          if [[ "${{ steps.trivy.outputs.trivy_exit }}" != "0" ]]; then
+            echo "Trivy scan failed" >&2
+            exit 1
+          fi
+          if [[ "${{ steps.grype.outputs.grype_exit }}" != "0" ]]; then
+            echo "Grype scan failed" >&2
+            exit 1
+          fi
+
+  digests:
     needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      digest_map: ${{ steps.digests.outputs.map }}
+    steps:
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image digests
+        id: digests
+        run: |
+          MAP=$(python3 <<'PY'
+import json
+import os
+import subprocess
+
+tags = os.environ["TAGS"].split()
+image = os.environ["IMAGE"]
+digest_map = {}
+
+for tag in tags:
+    result = subprocess.check_output(
+        ["docker", "buildx", "imagetools", "inspect", f"{image}:{tag}", "--format", "{{json .Manifest.Digest}}"],
+        text=True,
+    ).strip().strip('\"')
+    digest_map[tag] = result
+
+print(json.dumps(digest_map))
+PY
+)
+          echo "map=$MAP" >> "$GITHUB_OUTPUT"
+        env:
+          TAGS: "chainguard-jdk25-musl chainguard-jdk25 chainguard-jdk26ea-musl chainguard-jdk26ea chainguard-jdk26valhalla-musl chainguard-jdk26valhalla distroless-jre25 distroless-jre25-musl distroless-jre26ea distroless-jre26ea-musl distroless-jre26valhalla distroless-jre26valhalla-musl ubi9-jdk25 ubi9-jdk26ea ubi9-jdk26valhalla"
+          IMAGE: ${{ env.REGISTRY }}
+
+  provenance:
+    needs: digests
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - chainguard-jdk25-musl
+          - chainguard-jdk25
+          - chainguard-jdk26ea-musl
+          - chainguard-jdk26ea
+          - chainguard-jdk26valhalla-musl
+          - chainguard-jdk26valhalla
+          - distroless-jre25
+          - distroless-jre25-musl
+          - distroless-jre26ea
+          - distroless-jre26ea-musl
+          - distroless-jre26valhalla
+          - distroless-jre26valhalla-musl
+          - ubi9-jdk25
+          - ubi9-jdk26ea
+          - ubi9-jdk26valhalla
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    with:
+      image: ${{ env.REGISTRY }}
+      digest: ${{ fromJSON(needs.digests.outputs.digest_map)[matrix.target] }}
+    secrets:
+      registry-username: ${{ github.actor }}
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  verify:
+    needs: provenance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - chainguard-jdk25-musl
+          - chainguard-jdk25
+          - chainguard-jdk26ea-musl
+          - chainguard-jdk26ea
+          - chainguard-jdk26valhalla-musl
+          - chainguard-jdk26valhalla
+          - distroless-jre25
+          - distroless-jre25-musl
+          - distroless-jre26ea
+          - distroless-jre26ea-musl
+          - distroless-jre26valhalla
+          - distroless-jre26valhalla-musl
+          - ubi9-jdk25
+          - ubi9-jdk26ea
+          - ubi9-jdk26valhalla
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+
+      - name: Verify supply-chain attestations
+        run: ./scripts/verify_supply_chain.sh $REGISTRY:${{ matrix.target }}
+
+  summary:
+    needs: [build, provenance, verify]
     runs-on: ubuntu-latest
     steps:
       - name: Build Summary

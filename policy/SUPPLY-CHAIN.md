@@ -9,8 +9,20 @@ For a consolidated security overview, see `docs/security/overview.md`.
 | Integrity | `scripts/verify_sha256.sh` enforces checksum matches before extraction. |
 | SBOM | Syft CycloneDX SBOMs are generated and embedded via OCI labels. |
 | Signing | Cosign keyless signatures and SLSA provenance attestations are published for each tag. |
+| In-Toto Attestations | JDK resolution, SBOM metadata, and vulnerability scan metadata are attached via Cosign. |
 | Scanning | Trivy and Grype scans block HIGH/CRITICAL vulnerabilities pre-publish; nightly re-scans monitor drift. |
 | Dependency Updates | Dependabot monitors Docker base digests for updates. |
+
+## Verification
+
+```bash
+# Verify signatures and attestations
+scripts/verify_supply_chain.sh ghcr.io/artagon/artagon-containers:chainguard-jdk25
+
+# Verify SLSA provenance explicitly
+COSIGN_EXPERIMENTAL=1 cosign verify-attestation --type slsaprovenance \
+  ghcr.io/artagon/artagon-containers:chainguard-jdk25
+```
 
 ## FIPS 140-3 Roadmap
 
