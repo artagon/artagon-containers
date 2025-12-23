@@ -101,14 +101,14 @@ jobs:
           SYFT_VERSION="$(syft version | head -n 1 | sed 's/^Version: //')"
           GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           cat > attestations/sbom-metadata-${{ matrix.target }}.json <<EOF
-          {
-            "target": "${{ matrix.target }}",
-            "format": "cyclonedx-json",
-            "syft_version": "${SYFT_VERSION}",
-            "sbom_sha256": "${SBOM_SHA}",
-            "generated_at": "${GENERATED_AT}"
-          }
-          EOF
+{
+  "target": "${{ matrix.target }}",
+  "format": "cyclonedx-json",
+  "syft_version": "${SYFT_VERSION}",
+  "sbom_sha256": "${SBOM_SHA}",
+  "generated_at": "${GENERATED_AT}"
+}
+EOF
           cosign attest --yes \
             --predicate attestations/sbom-metadata-${{ matrix.target }}.json \
             --type https://artagon.dev/attestations/sbom-metadata/v1 \
