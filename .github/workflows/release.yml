@@ -72,15 +72,14 @@ jobs:
 
             SBOM_SHA="$(sha256sum sbom/${tag}.cdx.json | awk '{print $1}')"
             GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-            cat > attestations/sbom-metadata-${tag}.json <<EOF
-{
-  "target": "${tag}",
-  "format": "cyclonedx-json",
-  "syft_version": "${SYFT_VERSION}",
-  "sbom_sha256": "${SBOM_SHA}",
-  "generated_at": "${GENERATED_AT}"
-}
-EOF
+            jq -n \
+              --arg target "${tag}" \
+              --arg format "cyclonedx-json" \
+              --arg syft_version "${SYFT_VERSION}" \
+              --arg sbom_sha256 "${SBOM_SHA}" \
+              --arg generated_at "${GENERATED_AT}" \
+              '{target: $target, format: $format, syft_version: $syft_version, sbom_sha256: $sbom_sha256, generated_at: $generated_at}' \
+              > attestations/sbom-metadata-${tag}.json
           done
           echo "Generated $(ls sbom/*.cdx.json | wc -l) SBOM files"
 

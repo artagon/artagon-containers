@@ -100,15 +100,14 @@ jobs:
           SBOM_SHA="$(sha256sum "${SBOM_FILE}" | awk '{print $1}')"
           SYFT_VERSION="$(syft version | head -n 1 | sed 's/^Version: //')"
           GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          cat > attestations/sbom-metadata-${{ matrix.target }}.json <<EOF
-{
-  "target": "${{ matrix.target }}",
-  "format": "cyclonedx-json",
-  "syft_version": "${SYFT_VERSION}",
-  "sbom_sha256": "${SBOM_SHA}",
-  "generated_at": "${GENERATED_AT}"
-}
-EOF
+          jq -n \
+            --arg target "${{ matrix.target }}" \
+            --arg format "cyclonedx-json" \
+            --arg syft_version "${SYFT_VERSION}" \
+            --arg sbom_sha256 "${SBOM_SHA}" \
+            --arg generated_at "${GENERATED_AT}" \
+            '{target: $target, format: $format, syft_version: $syft_version, sbom_sha256: $sbom_sha256, generated_at: $generated_at}' \
+            > attestations/sbom-metadata-${{ matrix.target }}.json
           cosign attest --yes \
             --predicate attestations/sbom-metadata-${{ matrix.target }}.json \
             --type https://artagon.dev/attestations/sbom-metadata/v1 \
