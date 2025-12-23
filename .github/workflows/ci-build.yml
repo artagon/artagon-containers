@@ -53,6 +53,7 @@ jobs:
         env:
           REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         with:
+          files: ./docker-bake.hcl
           targets: ${{ matrix.target }}
           set: |
             *.cache-from=type=gha,scope=${{ matrix.target }}
