@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG BUILDER_DIGEST="sha256:dec374e05cc13ebbc0975c9f521f3db6942d27f8ccdf06b180160490eef8bdbc"
+ARG BUILDER_DIGEST="sha256:2c9bb68a869abf7d7417f6639509ab5eb8500d8429ea11ab59e677be5545162b"
 FROM registry.access.redhat.com/ubi9/ubi@${BUILDER_DIGEST} AS builder
 
 ARG FLAVOR=jdk26ea
@@ -8,12 +8,12 @@ ARG TYPE=ubi9
 ARG TARGETARCH
 
 RUN dnf install -y --allowerasing \
-    curl-7.76.1-34.el9 \
-    tar-2:1.34-7.el9 \
-    coreutils-8.32-39.el9 \
-    gzip-1.12-1.el9 \
-    ca-certificates-2025.2.80_v9.0.305-91.el9 \
-    python3-3.9.25-2.el9_7 \
+    curl \
+    tar \
+    coreutils \
+    gzip \
+    ca-certificates \
+    python3 \
     && dnf clean all
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
@@ -39,7 +39,7 @@ COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 
 ARG BUILD_TARGET=production
 RUN if [ "$BUILD_TARGET" = "ci" ]; then \
-        microdnf install -y nmap-ncat-3:7.92-3.el9 bind-utils-32:9.16.23-34.el9_7.1 && microdnf clean all; \
+        microdnf install -y nmap-ncat bind-utils && microdnf clean all; \
     fi
 
 RUN useradd --uid 65532 --shell /sbin/nologin runner \
