@@ -108,53 +108,38 @@ jobs:
             export GRYPE_VERSION
             export TRIVY_EXIT="$(cat scan/trivy-exit-${tag}.txt)"
             export GRYPE_EXIT="$(cat scan/grype-exit-${tag}.txt)"
-            python3 <<'PY'
-import json
-import os
-from datetime import datetime, timezone
-
-target = os.environ["TARGET"]
-trivy_path = f"scan/trivy-{target}.json"
-grype_path = f"scan/grype-{target}.json"
-
-def count_trivy(data):
-    counts = {}
-    for result in data.get("Results", []):
-        for vuln in result.get("Vulnerabilities") or []:
-            sev = vuln.get("Severity", "UNKNOWN")
-            counts[sev] = counts.get(sev, 0) + 1
-    return counts
-
-def count_grype(data):
-    counts = {}
-    for match in data.get("matches", []):
-        sev = match.get("vulnerability", {}).get("severity", "Unknown")
-        counts[sev] = counts.get(sev, 0) + 1
-    return counts
-
-with open(trivy_path, "r", encoding="utf-8") as fh:
-    trivy_data = json.load(fh)
-with open(grype_path, "r", encoding="utf-8") as fh:
-    grype_data = json.load(fh)
-
-payload = {
-    "target": target,
-    "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "trivy": {
-        "version": os.environ["TRIVY_VERSION"],
-        "exit_code": int(os.environ["TRIVY_EXIT"]),
-        "counts": count_trivy(trivy_data),
-    },
-    "grype": {
-        "version": os.environ["GRYPE_VERSION"],
-        "exit_code": int(os.environ["GRYPE_EXIT"]),
-        "counts": count_grype(grype_data),
-    },
-}
-
-with open(f"attestations/scan-{target}.json", "w", encoding="utf-8") as fh:
-    json.dump(payload, fh, indent=2)
-PY
+            python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          target = os.environ["TARGET"]
+          trivy_path = f"scan/trivy-{target}.json"
+          grype_path = f"scan/grype-{target}.json"
+          def count_trivy(data):
+              counts = {}
+              for result in data.get("Results", []):
+                  for vuln in result.get("Vulnerabilities") or []:
+                      sev = vuln.get("Severity", "UNKNOWN")
+                      counts[sev] = counts.get(sev, 0) + 1
+              return counts
+          def count_grype(data):
+              counts = {}
+              for match in data.get("matches", []):
+                  sev = match.get("vulnerability", {}).get("severity", "Unknown")
+                  counts[sev] = counts.get(sev, 0) + 1
+              return counts
+          with open(trivy_path, "r", encoding="utf-8") as fh:
+              trivy_data = json.load(fh)
+          with open(grype_path, "r", encoding="utf-8") as fh:
+              grype_data = json.load(fh)
+          payload = {
+              "target": target,
+              "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "trivy": {"version": os.environ["TRIVY_VERSION"], "exit_code": int(os.environ["TRIVY_EXIT"]), "counts": count_trivy(trivy_data)},
+              "grype": {"version": os.environ["GRYPE_VERSION"], "exit_code": int(os.environ["GRYPE_EXIT"]), "counts": count_grype(grype_data)},
+          }
+          with open(f"attestations/scan-{target}.json", "w", encoding="utf-8") as fh:
+              json.dump(payload, fh, indent=2)
+          PY
           done
 
       - name: Upload scan artifacts
