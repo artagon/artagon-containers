@@ -140,60 +140,47 @@ jobs:
           set -e
 
       - name: Attest vulnerability scan metadata
+        env:
+          TARGET: ${{ matrix.target }}
+          TRIVY_EXIT: ${{ steps.trivy.outputs.trivy_exit }}
+          GRYPE_EXIT: ${{ steps.grype.outputs.grype_exit }}
         run: |
           TRIVY_VERSION="$(trivy --version | head -n 1 | sed 's/^Version: //')"
           GRYPE_VERSION="$(grype version | head -n 1 | sed 's/^Version: //')"
-          TARGET="${{ matrix.target }}"
-          TRIVY_EXIT="${{ steps.trivy.outputs.trivy_exit }}"
-          GRYPE_EXIT="${{ steps.grype.outputs.grype_exit }}"
-          IMAGE_REF="${REGISTRY}:${{ matrix.target }}"
-          python3 <<'PY'
-import json
-import os
-from datetime import datetime, timezone
-
-target = os.environ["TARGET"]
-trivy_path = f"attestations/trivy-{target}.json"
-grype_path = f"attestations/grype-{target}.json"
-
-def count_trivy(data):
-    counts = {}
-    for result in data.get("Results", []):
-        for vuln in result.get("Vulnerabilities") or []:
-            sev = vuln.get("Severity", "UNKNOWN")
-            counts[sev] = counts.get(sev, 0) + 1
-    return counts
-
-def count_grype(data):
-    counts = {}
-    for match in data.get("matches", []):
-        sev = match.get("vulnerability", {}).get("severity", "Unknown")
-        counts[sev] = counts.get(sev, 0) + 1
-    return counts
-
-with open(trivy_path, "r", encoding="utf-8") as fh:
-    trivy_data = json.load(fh)
-with open(grype_path, "r", encoding="utf-8") as fh:
-    grype_data = json.load(fh)
-
-payload = {
-    "target": target,
-    "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    "trivy": {
-        "version": os.environ["TRIVY_VERSION"],
-        "exit_code": int(os.environ["TRIVY_EXIT"]),
-        "counts": count_trivy(trivy_data),
-    },
-    "grype": {
-        "version": os.environ["GRYPE_VERSION"],
-        "exit_code": int(os.environ["GRYPE_EXIT"]),
-        "counts": count_grype(grype_data),
-    },
-}
-
-with open(f"attestations/scan-{target}.json", "w", encoding="utf-8") as fh:
-    json.dump(payload, fh, indent=2)
-PY
+          IMAGE_REF="${REGISTRY}:${TARGET}"
+          export TRIVY_VERSION GRYPE_VERSION
+          python3 - <<'EOF'
+          import json, os
+          from datetime import datetime, timezone
+          target = os.environ["TARGET"]
+          trivy_path = f"attestations/trivy-{target}.json"
+          grype_path = f"attestations/grype-{target}.json"
+          def count_trivy(data):
+              counts = {}
+              for result in data.get("Results", []):
+                  for vuln in result.get("Vulnerabilities") or []:
+                      sev = vuln.get("Severity", "UNKNOWN")
+                      counts[sev] = counts.get(sev, 0) + 1
+              return counts
+          def count_grype(data):
+              counts = {}
+              for match in data.get("matches", []):
+                  sev = match.get("vulnerability", {}).get("severity", "Unknown")
+                  counts[sev] = counts.get(sev, 0) + 1
+              return counts
+          with open(trivy_path, "r", encoding="utf-8") as fh:
+              trivy_data = json.load(fh)
+          with open(grype_path, "r", encoding="utf-8") as fh:
+              grype_data = json.load(fh)
+          payload = {
+              "target": target,
+              "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "trivy": {"version": os.environ["TRIVY_VERSION"], "exit_code": int(os.environ["TRIVY_EXIT"]), "counts": count_trivy(trivy_data)},
+              "grype": {"version": os.environ["GRYPE_VERSION"], "exit_code": int(os.environ["GRYPE_EXIT"]), "counts": count_grype(grype_data)},
+          }
+          with open(f"attestations/scan-{target}.json", "w", encoding="utf-8") as fh:
+              json.dump(payload, fh, indent=2)
+          EOF
           cosign attest --yes \
             --predicate attestations/scan-${{ matrix.target }}.json \
             --type https://artagon.dev/attestations/vulnerability-scan/v1 \
