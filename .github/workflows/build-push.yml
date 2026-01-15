@@ -294,7 +294,7 @@ PY
           - ubi9-jdk26valhalla
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
     with:
-      image: ${{ env.REGISTRY }}
+      image: ghcr.io/${{ github.repository }}
       digest: ${{ fromJSON(needs.digests.outputs.digest_map)[matrix.target] }}
     secrets:
       registry-username: ${{ github.actor }}
