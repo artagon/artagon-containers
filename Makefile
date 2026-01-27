@@ -72,7 +72,7 @@ test-ci:
 	@if ! gh auth status >/dev/null 2>&1; then \
 		echo "GitHub CLI is not authenticated. Please run 'gh auth login' before running 'make test-ci'." >&2; \
 		exit 1; \
-	fi; \
+	fi
 	act pull_request -W .github/workflows/ci-build.yml --matrix target:ci-chainguard-jdk25 -s GITHUB_TOKEN="$$(gh auth token)"
 
 versions:

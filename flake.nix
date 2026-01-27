@@ -17,7 +17,7 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            # Container tools
+            # Container tools (CLI only - Docker daemon must be installed/running on host)
             docker
             docker-buildx
 
@@ -46,6 +46,10 @@
           shellHook = ''
             echo "artagon-containers dev environment"
             echo ""
+            echo "Prerequisites:"
+            echo "  - Docker daemon must be installed and running"
+            echo "  - Run 'gh auth login' before using make test-ci"
+            echo ""
             echo "Available tools:"
             echo "  act          - Run GitHub Actions locally"
             echo "  actionlint   - Lint workflow files"
@@ -54,7 +58,7 @@
             echo ""
             echo "Quick commands:"
             echo "  make lint-workflows  - Validate workflow syntax"
-            echo "  make test-ci         - Run CI workflow locally"
+            echo "  make test-ci         - Run CI workflow locally (single target)"
             echo ""
           '';
         };

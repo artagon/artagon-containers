@@ -1,2 +1,10 @@
+# act configuration for local GitHub Actions testing
+# See: https://github.com/nektos/act
+
+# Use catthehacker's Ubuntu image which closely matches GitHub-hosted runners
 -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest
+
+# Run containers with linux/amd64 architecture
+# Note: CI builds images for both linux/amd64 and linux/arm64, but local act
+# testing only validates amd64. ARM64-specific issues won't be caught locally.
 --container-architecture linux/amd64

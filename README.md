@@ -140,6 +140,74 @@ make sign TYPE=chainguard FLAVOR=jdk26ea
 Environment requirements: Docker 24+, Buildx/BuildKit, `jq`, `python3`, `curl`, `cosign`, `syft`, `trivy`, `grype`, `hadolint`, `dockle`.
 Linting note: `make lint` runs Dockle with `DOCKER_CONTENT_TRUST=1` to enforce signature verification.
 
+## Development Environment
+
+This project uses [Nix](https://nixos.org/) for reproducible development environments. All required tools are defined in `flake.nix`.
+
+### Quick Start with Nix
+
+```bash
+# Enter development shell (installs all dependencies)
+nix develop
+
+# Or use direnv for automatic shell activation
+echo "use flake" > .envrc
+direnv allow
+```
+
+### Included Tools
+
+The Nix development shell provides:
+- **Container tools**: docker, docker-buildx
+- **GitHub Actions testing**: act, actionlint
+- **Security & signing**: cosign, syft, grype, trivy
+- **Build tools**: gnumake, jq, yq-go, python3
+- **GitHub CLI**: gh
+
+### Without Nix
+
+If not using Nix, install the tools listed in Environment requirements above manually or via your system package manager.
+
+## Workflow Testing
+
+Test GitHub Actions workflows locally before pushing to avoid CI failures.
+
+### Lint Workflows
+
+```bash
+# Validate all workflow YAML files
+make lint-workflows
+
+# Or directly with actionlint
+actionlint .github/workflows/*.yml
+```
+
+### Run CI Locally with act
+
+[act](https://github.com/nektos/act) runs GitHub Actions locally using Docker.
+
+```bash
+# Run CI workflow for a single target
+make test-ci
+
+# Run specific workflow with custom target
+act pull_request -W .github/workflows/ci-build.yml \
+  --matrix target:ci-chainguard-jdk25 \
+  -s GITHUB_TOKEN="$(gh auth token)"
+```
+
+### Configuration Files
+
+- `.actrc` - Default act configuration (runner image, architecture)
+- `flake.nix` - Nix development environment definition
+
+### Limitations
+
+- `act` uses different runner images than GitHub-hosted runners
+- Some GitHub Actions features (caching, artifacts) may behave differently
+- Secrets must be passed explicitly via `-s` flag
+- Docker-in-Docker may require additional configuration
+
 ## Build Process and Tooling
 
 Build pipeline overview:

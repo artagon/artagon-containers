@@ -106,6 +106,23 @@ Makefile (orchestration)
 
 ### Testing Strategy
 
+**Development Environment**:
+- **Nix flake** (`flake.nix`) provides all required tools reproducibly
+- Enter development shell with `nix develop`
+- Alternatively, use direnv with `echo "use flake" > .envrc && direnv allow`
+- Without Nix, install tools manually (Docker 24+, act, actionlint, cosign, syft, trivy, grype)
+
+**Workflow Validation**:
+- **actionlint**: Validates GitHub Actions workflow YAML syntax
+- Run `make lint-workflows` before pushing workflow changes
+- Catches common errors: invalid syntax, missing permissions, incorrect job references
+
+**Local CI Testing with act**:
+- **act** runs GitHub Actions workflows locally using Docker
+- Configuration in `.actrc` sets runner image and architecture
+- Run `make test-ci` for quick validation of CI workflow
+- Limitations: Different runner images, some features behave differently, secrets must be passed explicitly
+
 **Build-Time Validation**:
 - Dockerfile linting with Hadolint during local development
 - Image structure validation with Dockle (optional, exit-code override for CI)
@@ -119,6 +136,15 @@ Makefile (orchestration)
 
 **Manual Testing Commands**:
 ```bash
+# Enter Nix development shell (recommended)
+nix develop
+
+# Validate workflow syntax before pushing
+make lint-workflows
+
+# Run CI workflow locally
+make test-ci
+
 # Build and load single-platform image for local testing
 make build TYPE=chainguard FLAVOR=jdk25
 

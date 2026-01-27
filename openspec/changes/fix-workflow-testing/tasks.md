@@ -11,7 +11,7 @@
 
 - [x] **2.1** Add `actionlint` validation to Makefile
 - [x] **2.2** Create `make lint-workflows` target
-- [ ] **2.3** Document workflow validation in README or CONTRIBUTING
+- [x] **2.3** Document workflow validation in README or CONTRIBUTING
 
 ## Phase 3: Local Testing with `act`
 
@@ -24,7 +24,7 @@
 
 - [x] **4.1** Create `flake.nix` with dev shell
 - [x] **4.2** Include `act`, `actionlint`, `docker`, `gh`, security tools
-- [ ] **4.3** Test `nix develop` and workflow validation
+- [x] **4.3** Test `nix develop` and workflow validation
 
 ## Phase 5: CI Integration
 
