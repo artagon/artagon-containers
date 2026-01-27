@@ -234,6 +234,8 @@ jobs:
     outputs:
       digest_map: ${{ steps.digests.outputs.map }}
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Login to GHCR
@@ -246,25 +248,7 @@ jobs:
       - name: Resolve image digests
         id: digests
         run: |
-          MAP=$(python3 <<'PY'
-import json
-import os
-import subprocess
-
-tags = os.environ["TAGS"].split()
-image = os.environ["IMAGE"]
-digest_map = {}
-
-for tag in tags:
-    result = subprocess.check_output(
-        ["docker", "buildx", "imagetools", "inspect", f"{image}:{tag}", "--format", "{{json .Manifest.Digest}}"],
-        text=True,
-    ).strip().strip('\"')
-    digest_map[tag] = result
-
-print(json.dumps(digest_map))
-PY
-)
+          MAP=$(python3 ./scripts/resolve_digests.py)
           echo "map=$MAP" >> "$GITHUB_OUTPUT"
         env:
           TAGS: "chainguard-jdk25-musl chainguard-jdk25 chainguard-jdk26ea-musl chainguard-jdk26ea chainguard-jdk26valhalla-musl chainguard-jdk26valhalla distroless-jre25 distroless-jre25-musl distroless-jre26ea distroless-jre26ea-musl distroless-jre26valhalla distroless-jre26valhalla-musl ubi9-jdk25 ubi9-jdk26ea ubi9-jdk26valhalla"
