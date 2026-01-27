@@ -1,0 +1,35 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:pinDigests",
+    "schedule:weekly"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies", "automated"],
+  "packageRules": [
+    {
+      "description": "Group Chainguard base images",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["^cgr\\.dev/chainguard/", "^alpine$"],
+      "groupName": "chainguard-base-images"
+    },
+    {
+      "description": "Group Distroless base images",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["^gcr\\.io/distroless/"],
+      "groupName": "distroless-base-images"
+    },
+    {
+      "description": "Group UBI9 base images",
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["^registry\\.access\\.redhat\\.com/ubi9"],
+      "groupName": "ubi9-base-images"
+    }
+  ],
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 10
+}

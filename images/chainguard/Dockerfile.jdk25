@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1.7
-ARG WOLFI_DIGEST="sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344"
-ARG ALPINE_DIGEST="sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958"
-
-FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS builder-glibc
+# renovate: datasource=docker
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS builder-glibc
 
 ARG FLAVOR=jdk25
 ARG LIBC=glibc
@@ -28,7 +26,8 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
     rm -f /tmp/jdk.tar.gz
 
-FROM alpine:3.20@${ALPINE_DIGEST} AS builder-musl
+# renovate: datasource=docker
+FROM alpine:3.20@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958 AS builder-musl
 
 ARG FLAVOR=jdk25
 ARG LIBC=musl
@@ -54,7 +53,8 @@ RUN set -eux; \
     tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
     rm -f /tmp/jdk.tar.gz
 
-FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS runtime-glibc
+# renovate: datasource=docker
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS runtime-glibc
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
@@ -94,7 +94,8 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 ENTRYPOINT ["java"]
 CMD ["--version"]
 
-FROM alpine:3.20@${ALPINE_DIGEST} AS runtime-musl
+# renovate: datasource=docker
+FROM alpine:3.20@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958 AS runtime-musl
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
