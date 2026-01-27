@@ -20,7 +20,7 @@ define image_tag
 $($(strip IMAGE_TAG_$(1)_$(2)))
 endef
 
-.PHONY: all resolve build build-ci push sbom scan sign attest lint versions clean
+.PHONY: all resolve build build-ci push sbom scan sign attest lint lint-workflows test-ci versions clean
 
 all: build
 
@@ -64,6 +64,12 @@ attest: sbom
 lint:
 	hadolint images/chainguard/Dockerfile.* images/distroless/Dockerfile.* images/ubi9/Dockerfile.*
 	DOCKER_CONTENT_TRUST=1 dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
+
+lint-workflows:
+	actionlint .github/workflows/*.yml
+
+test-ci:
+	act pull_request -W .github/workflows/ci-build.yml --matrix target:ci-chainguard-jdk25 -s GITHUB_TOKEN="$$(gh auth token)"
 
 versions:
 	./scripts/print_versions.sh
