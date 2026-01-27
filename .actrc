@@ -10,3 +10,5 @@
 #   - Intel Mac / Linux: uses linux/amd64
 # Direct 'act' invocations without make will use this default.
 --container-architecture linux/amd64
+# Note: act is configured to run with linux/amd64 only. Our CI builds images for both
+# linux/amd64 and linux/arm64, so local act runs will not catch arm64-specific issues.
