@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 ARG LIBC=glibc
-ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
-ARG ALPINE_DIGEST="sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d"
+ARG WOLFI_DIGEST="sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344"
+ARG ALPINE_DIGEST="sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958"
 
 FROM alpine:3.20@${ALPINE_DIGEST} AS musl-loader
 
@@ -16,12 +16,12 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 RUN set -eux; \
     for attempt in 1 2 3; do \
       if apk add --no-cache \
-        curl=8.17.0-r0 \
-        coreutils=9.9-r0 \
-        bash=5.3-r3 \
-        python-3.12=3.12.12-r3 \
-        ca-certificates=20251003-r0 \
-        binutils=2.45.1-r2; then \
+        curl \
+        coreutils \
+        bash \
+        python-3.12 \
+        ca-certificates \
+        binutils; then \
         break; \
       fi; \
       if [ "$attempt" -eq 3 ]; then \
@@ -40,9 +40,9 @@ RUN set -eux; \
     apk_add_glibc() { \
       for attempt in 1 2 3; do \
         if apk add --no-cache \
-          glibc=2.42-r3 \
-          glibc-locale-posix=2.42-r3 \
-          libgcc=15.2.0-r3; then \
+          glibc \
+          glibc-locale-posix \
+          libgcc; then \
           return 0; \
         fi; \
         if [ "$attempt" -eq 3 ]; then \
@@ -70,7 +70,7 @@ RUN set -eux; \
 
 # Note: Distroless static-debian12 has no libc, cannot run JDK binaries
 # Use base-debian12 (glibc) for both variants
-FROM gcr.io/distroless/base-debian12@sha256:9e9b50d2048db3741f86a48d939b4e4cc775f5889b3496439343301ff54cdba8 AS runtime
+FROM gcr.io/distroless/base-debian12@sha256:0c70ab46409b94a96f4e98e32e7333050581e75f7038de2877a4bfc146dfc7ce AS runtime
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jre-${FLAVOR}

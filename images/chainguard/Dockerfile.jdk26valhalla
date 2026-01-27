@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-ARG WOLFI_DIGEST="sha256:ae238a181d95804645919b2671d50ae77477efbfb299544491346e2911125aaf"
+ARG WOLFI_DIGEST="sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344"
 
 FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS builder
 
@@ -9,11 +9,11 @@ ARG TYPE=chainguard
 ARG TARGETARCH
 
 RUN apk add --no-cache \
-    curl=8.17.0-r0 \
-    coreutils=9.9-r0 \
-    bash=5.3-r3 \
-    python-3.12=3.12.12-r3 \
-    ca-certificates=20251003-r0
+    curl \
+    coreutils \
+    bash \
+    python-3.12 \
+    ca-certificates
 
 COPY scripts/resolve_jdk.sh /usr/local/bin/resolve_jdk.sh
 COPY scripts/verify_sha256.sh /usr/local/bin/verify_sha256.sh
@@ -41,9 +41,9 @@ COPY scripts/health-check.sh /usr/local/bin/health-check.sh
 ARG BUILD_TARGET=production
 RUN if [ "$BUILD_TARGET" = "ci" ]; then \
         apk add --no-cache \
-          curl=8.17.0-r0 \
-          netcat-openbsd=1.234-r0 \
-          bind-tools=9.20.17-r0; \
+          curl \
+          netcat-openbsd \
+          bind-tools; \
     fi
 
 RUN set -eux; \
