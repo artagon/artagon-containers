@@ -6,12 +6,59 @@ variable "SOURCE_DATE_EPOCH" {
   default = ""
 }
 
+# Base image digests - populated from versions/*.lock files
+# Override via: docker buildx bake --set *.args.WOLFI_DIGEST=sha256:...
+# Or set environment variables before running bake
+variable "WOLFI_DIGEST" {
+  default = ""
+}
+
+variable "ALPINE_DIGEST" {
+  default = ""
+}
+
+variable "UBI9_DIGEST" {
+  default = ""
+}
+
+variable "UBI9_MINIMAL_DIGEST" {
+  default = ""
+}
+
+variable "DISTROLESS_DIGEST" {
+  default = ""
+}
+
 target "common" {
   context   = "."
   args = {
     SOURCE_DATE_EPOCH = SOURCE_DATE_EPOCH
   }
   platforms = ["linux/amd64", "linux/arm64"]
+}
+
+# Common args for Chainguard images (Wolfi + Alpine bases)
+target "common-chainguard" {
+  args = {
+    WOLFI_DIGEST  = WOLFI_DIGEST
+    ALPINE_DIGEST = ALPINE_DIGEST
+  }
+}
+
+# Common args for Distroless images
+target "common-distroless" {
+  args = {
+    WOLFI_DIGEST      = WOLFI_DIGEST
+    ALPINE_DIGEST     = ALPINE_DIGEST
+    DISTROLESS_DIGEST = DISTROLESS_DIGEST
+  }
+}
+
+# Common args for UBI9 images
+target "common-ubi9" {
+  args = {
+    BUILDER_DIGEST = UBI9_DIGEST
+  }
 }
 
 group "default" {
@@ -37,7 +84,7 @@ group "default" {
 # Chainguard
 
 target "chainguard-jdk25" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-chainguard"]
   dockerfile = "images/chainguard/Dockerfile.jdk25"
   target     = "runtime-glibc"
   args = {
@@ -57,7 +104,7 @@ target "chainguard-jdk25-musl" {
 }
 
 target "chainguard-jdk26ea" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-chainguard"]
   dockerfile = "images/chainguard/Dockerfile.jdk26ea"
   args = {
     FLAVOR = "jdk26ea"
@@ -75,7 +122,7 @@ target "chainguard-jdk26ea-musl" {
 }
 
 target "chainguard-jdk26valhalla" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-chainguard"]
   dockerfile = "images/chainguard/Dockerfile.jdk26valhalla"
   args = {
     FLAVOR = "jdk26valhalla"
@@ -95,7 +142,7 @@ target "chainguard-jdk26valhalla-musl" {
 # Distroless
 
 target "distroless-jre25" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre25"
   args = {
     FLAVOR = "jdk25"
@@ -105,7 +152,7 @@ target "distroless-jre25" {
 }
 
 target "distroless-jre25-musl" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre25"
   args = {
     FLAVOR = "jdk25"
@@ -115,7 +162,7 @@ target "distroless-jre25-musl" {
 }
 
 target "distroless-jre26ea" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre26ea"
   args = {
     FLAVOR = "jdk26ea"
@@ -125,7 +172,7 @@ target "distroless-jre26ea" {
 }
 
 target "distroless-jre26ea-musl" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre26ea"
   args = {
     FLAVOR = "jdk26ea"
@@ -135,7 +182,7 @@ target "distroless-jre26ea-musl" {
 }
 
 target "distroless-jre26valhalla" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre26valhalla"
   args = {
     FLAVOR = "jdk26valhalla"
@@ -145,7 +192,7 @@ target "distroless-jre26valhalla" {
 }
 
 target "distroless-jre26valhalla-musl" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-distroless"]
   dockerfile = "images/distroless/Dockerfile.jre26valhalla"
   args = {
     FLAVOR = "jdk26valhalla"
@@ -157,7 +204,7 @@ target "distroless-jre26valhalla-musl" {
 # UBI9
 
 target "ubi9-jdk25" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-ubi9"]
   dockerfile = "images/ubi9/Dockerfile.jdk25"
   args = {
     FLAVOR = "jdk25"
@@ -167,7 +214,7 @@ target "ubi9-jdk25" {
 }
 
 target "ubi9-jdk26ea" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-ubi9"]
   dockerfile = "images/ubi9/Dockerfile.jdk26ea"
   args = {
     FLAVOR = "jdk26ea"
@@ -177,7 +224,7 @@ target "ubi9-jdk26ea" {
 }
 
 target "ubi9-jdk26valhalla" {
-  inherits   = ["common"]
+  inherits   = ["common", "common-ubi9"]
   dockerfile = "images/ubi9/Dockerfile.jdk26valhalla"
   args = {
     FLAVOR = "jdk26valhalla"

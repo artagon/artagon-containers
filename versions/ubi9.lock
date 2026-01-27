@@ -1,0 +1,13 @@
+{
+  "registry": "registry.access.redhat.com/ubi9/ubi",
+  "tag": "latest",
+  "digest": "sha256:c8df11b65b18fcf384d5b7fa53e2a92f381a2d9ad78b9de41dc6f2aa161a0e04",
+  "updated": "2026-01-27T00:00:00Z",
+  "minimal": {
+    "registry": "registry.access.redhat.com/ubi9-minimal",
+    "tag": "latest",
+    "digest": "sha256:bb08f2300cb8d12a7eb91dddf28ea63692b3ec99e7f0fa71a1b300f2756ea829"
+  },
+  "packages": {},
+  "_comment": "UBI9 uses dnf/microdnf; package versions not pinned"
+}
