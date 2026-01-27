@@ -53,6 +53,8 @@ esac
 entries='[]'
 for arch in amd64 arm64; do
   # Clear optional variables that may or may not be set by resolve_jdk.sh
+  unset VERSION JDK_URL JDK_SHA256 SIGNATURE_URL
+  # Clear optional variables that may or may not be set by resolve_jdk.sh
   # to prevent stale values from previous iterations
   unset VERSION JDK_URL JDK_SHA256 SIGNATURE_URL
 
