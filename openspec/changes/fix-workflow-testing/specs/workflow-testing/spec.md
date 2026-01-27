@@ -20,12 +20,20 @@ Local workflow validation and testing infrastructure to catch GitHub Actions iss
 | `act` | Local workflow execution | Optional |
 | `gh` | GitHub CLI for workflow inspection | Yes |
 
-### Devcontainer
+### Development Environment (Nix)
 
-The devcontainer must include:
-- Docker-in-Docker support for `act`
-- Pre-installed: `act`, `actionlint`, `gh`, `docker`
-- VS Code extensions: YAML, GitHub Actions
+The `flake.nix` provides a reproducible development shell with:
+- Container tools: `docker`, `docker-buildx` (CLI only - daemon must run on host)
+- GitHub Actions testing: `act`, `actionlint`
+- Security tools: `cosign`, `syft`, `grype`, `trivy`
+- Build tools: `gnumake`, `jq`, `yq-go`, `python3`, `gh`
+
+Usage:
+```bash
+nix develop           # Enter development shell
+# or with direnv:
+echo "use flake" > .envrc && direnv allow
+```
 
 ## Validation Rules
 
