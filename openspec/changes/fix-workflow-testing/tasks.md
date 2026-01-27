@@ -18,7 +18,7 @@
 - [x] **3.1** Create `.actrc` configuration file
 - [x] **3.2** Create `act` secrets template (`.secrets.example`)
 - [x] **3.3** Add `make test-ci` target for running CI workflow locally
-- [ ] **3.4** Document act usage and limitations
+- [x] **3.4** Document act usage and limitations
 
 ## Phase 4: Nix Development Environment
 
