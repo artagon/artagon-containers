@@ -54,6 +54,7 @@ entries='[]'
 for arch in amd64 arm64; do
   env_output="$($RESOLVER --flavor=${flavor} --arch=${arch} --libc=${libc} --type=${type})"
   eval "$env_output"
+  export ARCH LIBC FLAVOR VERSION JDK_URL JDK_SHA256 SIGNATURE_URL TYPE
   timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   entries=$(ENTRIES="$entries" TIMESTAMP="$timestamp" python3 <<'PY'
 import json, os
