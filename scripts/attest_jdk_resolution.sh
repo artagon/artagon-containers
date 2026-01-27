@@ -52,8 +52,30 @@ esac
 
 entries='[]'
 for arch in amd64 arm64; do
+  # Clear optional variables that may or may not be set by resolve_jdk.sh
+  unset VERSION JDK_URL JDK_SHA256 SIGNATURE_URL
+  # Clear optional variables that may or may not be set by resolve_jdk.sh
+  # to prevent stale values from previous iterations
+  unset VERSION JDK_URL JDK_SHA256 SIGNATURE_URL
+
   env_output="$($RESOLVER --flavor=${flavor} --arch=${arch} --libc=${libc} --type=${type})"
-  eval "$env_output"
+
+  # Safely parse resolver output (KEY=VALUE format) without using eval.
+  # This treats the resolver output as data and avoids executing any embedded shell.
+  for assignment in $env_output; do
+    case "$assignment" in
+      *=*)
+        name="${assignment%%=*}"
+        value="${assignment#*=}"
+        # Only allow uppercase shell variable names (ARCH, LIBC, etc.)
+        if [[ "$name" =~ ^[A-Z_][A-Z0-9_]*$ ]]; then
+          printf -v "$name" '%s' "$value"
+        fi
+        ;;
+    esac
+  done
+
+  export ARCH LIBC FLAVOR VERSION JDK_URL JDK_SHA256 SIGNATURE_URL TYPE
   timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   entries=$(ENTRIES="$entries" TIMESTAMP="$timestamp" python3 <<'PY'
 import json, os
