@@ -2,6 +2,9 @@
   description = "artagon-containers development environment";
 
   inputs = {
+    # Intentionally pinned to nixos-24.05 for reproducibility and to match
+    # the target NixOS deployment release. Update deliberately once the
+    # project is ready to adopt a newer stable channel.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
