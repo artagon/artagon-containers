@@ -257,6 +257,7 @@ jobs:
   provenance:
     needs: digests
     permissions:
+      actions: read
       id-token: write
       packages: write
       contents: read
