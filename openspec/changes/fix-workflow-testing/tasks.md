@@ -2,31 +2,29 @@
 
 ## Phase 1: Fix SLSA Permissions (Immediate)
 
-- [ ] **1.1** Update `build-push.yml` provenance job permissions to include `actions: read`
-- [ ] **1.2** Update `release.yml` provenance job permissions to include `actions: read`
-- [ ] **1.3** Verify workflow syntax with `gh workflow view`
-- [ ] **1.4** Push fix and verify CI passes
+- [x] **1.1** Update `build-push.yml` provenance job permissions to include `actions: read`
+- [x] **1.2** Update `release.yml` provenance job permissions to include `actions: read`
+- [x] **1.3** Verify workflow syntax with `gh workflow view`
+- [x] **1.4** Push fix and verify CI passes
 
 ## Phase 2: Workflow Validation Tools
 
-- [ ] **2.1** Add `actionlint` validation to pre-commit or Makefile
-- [ ] **2.2** Create `make lint-workflows` target
-- [ ] **2.3** Document workflow validation in README or CONTRIBUTING
+- [x] **2.1** Add `actionlint` validation to Makefile
+- [x] **2.2** Create `make lint-workflows` target
+- [x] **2.3** Document workflow validation in README or CONTRIBUTING
 
 ## Phase 3: Local Testing with `act`
 
-- [ ] **3.1** Create `.actrc` configuration file
-- [ ] **3.2** Create `act` secrets template (`.secrets.example`)
-- [ ] **3.3** Add `make test-ci` target for running CI workflow locally
-- [ ] **3.4** Document act usage and limitations
+- [x] **3.1** Create `.actrc` configuration file
+- [x] **3.2** Create `act` secrets template (`.secrets.example`)
+- [x] **3.3** Add `make test-ci` target for running CI workflow locally
+- [x] **3.4** Document act usage and limitations
 
-## Phase 4: Devcontainer Setup
+## Phase 4: Nix Development Environment
 
-- [ ] **4.1** Create `.devcontainer/devcontainer.json`
-- [ ] **4.2** Add `act`, `actionlint`, `docker`, `gh` to devcontainer
-- [ ] **4.3** Configure devcontainer for Docker-in-Docker
-- [ ] **4.4** Add VS Code extensions for YAML and GitHub Actions
-- [ ] **4.5** Test devcontainer build and workflow validation
+- [x] **4.1** Create `flake.nix` with dev shell
+- [x] **4.2** Include `act`, `actionlint`, `docker`, `gh`, security tools
+- [x] **4.3** Test `nix develop` and workflow validation
 
 ## Phase 5: CI Integration
 

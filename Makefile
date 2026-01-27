@@ -5,6 +5,23 @@ PLATFORMS ?= linux/amd64,linux/arm64
 SOURCE_DATE_EPOCH ?= $(shell date +%s)
 ENV_DIR := .env
 SBOM_DIR := sbom
+CI_TARGET ?= ci-chainguard-jdk25
+
+# OS detection for platform-specific behavior
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    HOST_OS := macos
+    # On Apple Silicon, default to arm64 for faster local builds
+    HOST_ARCH := $(shell uname -m)
+    ifeq ($(HOST_ARCH),arm64)
+        ACT_ARCH := linux/arm64
+    else
+        ACT_ARCH := linux/amd64
+    endif
+else
+    HOST_OS := linux
+    ACT_ARCH := linux/amd64
+endif
 
 IMAGE_TAG_chainguard_jdk25 := chainguard-jdk25
 IMAGE_TAG_chainguard_jdk26ea := chainguard-jdk26ea
@@ -20,7 +37,7 @@ define image_tag
 $($(strip IMAGE_TAG_$(1)_$(2)))
 endef
 
-.PHONY: all resolve build build-ci push sbom scan sign attest lint versions clean
+.PHONY: all resolve build build-ci push sbom scan sign attest lint lint-workflows test-ci info versions clean
 
 all: build
 
@@ -64,6 +81,30 @@ attest: sbom
 lint:
 	hadolint images/chainguard/Dockerfile.* images/distroless/Dockerfile.* images/ubi9/Dockerfile.*
 	DOCKER_CONTENT_TRUST=1 dockle --exit-code 1 $(REGISTRY):$(call image_tag,$(TYPE),$(FLAVOR))
+
+lint-workflows:
+	actionlint .github/workflows/*.yml
+
+# Run CI workflow locally with act. Tests single target (default: ci-chainguard-jdk25).
+# Override with: make test-ci CI_TARGET=ci-ubi9-jdk25
+# Available targets: ci-chainguard-jdk25, ci-distroless-jre25, ci-ubi9-jdk25, etc.
+# On macOS Apple Silicon, automatically uses arm64 for faster builds.
+test-ci:
+	@if ! gh auth status >/dev/null 2>&1; then \
+		echo "GitHub CLI is not authenticated. Please run 'gh auth login' before running 'make test-ci'." >&2; \
+		exit 1; \
+	fi
+	@echo "Running on $(HOST_OS) with container architecture $(ACT_ARCH)"
+	act pull_request -W .github/workflows/ci-build.yml --matrix target:$(CI_TARGET) \
+		--container-architecture $(ACT_ARCH) \
+		-s GITHUB_TOKEN="$$(gh auth token)"
+
+# Show detected OS and architecture
+info:
+	@echo "Host OS:      $(HOST_OS)"
+	@echo "Host Arch:    $(HOST_ARCH)"
+	@echo "Act Arch:     $(ACT_ARCH)"
+	@echo "CI Target:    $(CI_TARGET)"
 
 versions:
 	./scripts/print_versions.sh

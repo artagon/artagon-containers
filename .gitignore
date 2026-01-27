@@ -2,3 +2,7 @@
 sbom/*.json
 *.log
 tmp/
+
+# act secrets (local testing)
+.secrets
+.act-secrets/
