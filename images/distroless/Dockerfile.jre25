@@ -16,12 +16,12 @@ SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 RUN set -eux; \
     for attempt in 1 2 3; do \
       if apk add --no-cache \
-        curl=8.17.0-r0 \
-        coreutils=9.9-r0 \
-        bash=5.3-r3 \
-        python-3.12=3.12.12-r3 \
-        ca-certificates=20251003-r0 \
-        binutils=2.45.1-r2; then \
+        curl \
+        coreutils \
+        bash \
+        python-3.12 \
+        ca-certificates \
+        binutils; then \
         break; \
       fi; \
       if [ "$attempt" -eq 3 ]; then \
@@ -40,9 +40,9 @@ RUN set -eux; \
     apk_add_glibc() { \
       for attempt in 1 2 3; do \
         if apk add --no-cache \
-          glibc=2.42-r3 \
-          glibc-locale-posix=2.42-r3 \
-          libgcc=15.2.0-r3; then \
+          glibc \
+          glibc-locale-posix \
+          libgcc; then \
           return 0; \
         fi; \
         if [ "$attempt" -eq 3 ]; then \
