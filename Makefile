@@ -5,6 +5,7 @@ PLATFORMS ?= linux/amd64,linux/arm64
 SOURCE_DATE_EPOCH ?= $(shell date +%s)
 ENV_DIR := .env
 SBOM_DIR := sbom
+CI_TARGET ?= ci-chainguard-jdk25
 
 IMAGE_TAG_chainguard_jdk25 := chainguard-jdk25
 IMAGE_TAG_chainguard_jdk26ea := chainguard-jdk26ea
@@ -68,12 +69,15 @@ lint:
 lint-workflows:
 	actionlint .github/workflows/*.yml
 
+# Run CI workflow locally with act. Tests single target (default: ci-chainguard-jdk25).
+# Override with: make test-ci CI_TARGET=ci-ubi9-jdk25
+# Available targets: ci-chainguard-jdk25, ci-distroless-jre25, ci-ubi9-jdk25, etc.
 test-ci:
 	@if ! gh auth status >/dev/null 2>&1; then \
 		echo "GitHub CLI is not authenticated. Please run 'gh auth login' before running 'make test-ci'." >&2; \
 		exit 1; \
 	fi
-	act pull_request -W .github/workflows/ci-build.yml --matrix target:ci-chainguard-jdk25 -s GITHUB_TOKEN="$$(gh auth token)"
+	act pull_request -W .github/workflows/ci-build.yml --matrix target:$(CI_TARGET) -s GITHUB_TOKEN="$$(gh auth token)"
 
 versions:
 	./scripts/print_versions.sh
