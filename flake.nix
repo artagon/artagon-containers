@@ -46,6 +46,8 @@
           shellHook = ''
             echo "artagon-containers dev environment"
             echo ""
+            echo "Prerequisites: Docker daemon must be running"
+            echo ""
             echo "Available tools:"
             echo "  act          - Run GitHub Actions locally"
             echo "  actionlint   - Lint workflow files"
