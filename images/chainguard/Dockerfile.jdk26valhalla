@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1.7
-ARG WOLFI_DIGEST="sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344"
-
-FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS builder
+# renovate: datasource=docker
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS builder
 
 ARG FLAVOR=jdk26valhalla
 ARG LIBC=glibc
@@ -29,7 +28,8 @@ RUN set -eux; \
 
 # Note: JDK 26 Valhalla doesn't provide musl binaries, only glibc
 # Use Wolfi (glibc) runtime for both variants
-FROM cgr.dev/chainguard/wolfi-base@${WOLFI_DIGEST} AS runtime
+# renovate: datasource=docker
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS runtime
 
 ARG FLAVOR=jdk26valhalla
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
