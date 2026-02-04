@@ -60,7 +60,7 @@ jobs:
       - name: Scan with Grype (Anchore)
         id: grype-scan
         continue-on-error: true
-        uses: anchore/scan-action@568b89d27fc18c60e56937bff480c91c772cd993 # v7.1.0
+        uses: anchore/scan-action@7037fa011853d5a11690026fb85feee79f4c946c # v7.3.2
         with:
           image: ${{ env.REGISTRY }}:${{ matrix.image }}
           fail-build: false
