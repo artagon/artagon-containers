@@ -72,7 +72,7 @@ RUN set -eux; \
 # Note: Distroless static-debian12 has no libc, cannot run JDK binaries
 # Use base-debian12 (glibc) for both variants
 # renovate: datasource=docker
-FROM gcr.io/distroless/base-debian12:latest@sha256:0c70ab46409b94a96f4e98e32e7333050581e75f7038de2877a4bfc146dfc7ce AS runtime
+FROM gcr.io/distroless/base-debian12:latest@sha256:fabbf1c0c357a3d42550111351daed089b20a2c954df13ee2fcff60602515e84 AS runtime
 
 ARG FLAVOR=jdk26valhalla
 ENV JAVA_HOME=/usr/lib/jvm/jre-${FLAVOR}
