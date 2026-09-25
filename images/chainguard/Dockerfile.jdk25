@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 # renovate: datasource=docker
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS builder-glibc
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:08df5982c3d27e70a4ce1607e3bb9af09d746f8722cf135a7694afef879fc5a2 AS builder-glibc
 
 ARG FLAVOR=jdk25
 ARG LIBC=glibc
@@ -27,7 +27,7 @@ RUN set -eux; \
     rm -f /tmp/jdk.tar.gz
 
 # renovate: datasource=docker
-FROM alpine:3.20@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958 AS builder-musl
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS builder-musl
 
 ARG FLAVOR=jdk25
 ARG LIBC=musl
@@ -54,7 +54,7 @@ RUN set -eux; \
     rm -f /tmp/jdk.tar.gz
 
 # renovate: datasource=docker
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS runtime-glibc
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:08df5982c3d27e70a4ce1607e3bb9af09d746f8722cf135a7694afef879fc5a2 AS runtime-glibc
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
@@ -95,7 +95,7 @@ ENTRYPOINT ["java"]
 CMD ["--version"]
 
 # renovate: datasource=docker
-FROM alpine:3.20@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958 AS runtime-musl
+FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS runtime-musl
 
 ARG FLAVOR=jdk25
 ENV JAVA_HOME=/usr/lib/jvm/jdk-${FLAVOR}
