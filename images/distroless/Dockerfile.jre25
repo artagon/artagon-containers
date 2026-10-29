@@ -2,10 +2,10 @@
 ARG LIBC=glibc
 
 # renovate: datasource=docker
-FROM alpine:3.20@sha256:765942a4039992336de8dd5db680586e1a206607dd06170ff0a37267a9e01958 AS musl-loader
+FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS musl-loader
 
 # renovate: datasource=docker
-FROM cgr.dev/chainguard/wolfi-base:latest@sha256:f6959a1b0ed7e6f4696f5cd8373b28846494cb9272a14dc0ddc0db94d00e7344 AS builder
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:88a20e2d017bd20cdc0cb3910de603e7bea9512a6c351a8dd3c9df212ab03d73 AS builder
 
 ARG FLAVOR=jdk25
 ARG LIBC=glibc
